@@ -1,13 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-import pickle
-import os
-import numpy as np
+from schemas import TransactionRequest
+from predict import make_decision
+from redis_logger import log_transaction, get_history
+from behavioral_model import predict_behavior
 
-print("📂 Backend: Loading Model...")
-
-app = FastAPI()
+app = FastAPI(title="FlashGuard Pro API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -16,53 +14,29 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Robust path finding
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(BASE_DIR, "flashguard_model.pkl")
-
-try:
-    with open(MODEL_PATH, "rb") as f:
-        ai_model = pickle.load(f)
-    print("✅ Backend: Model Loaded Successfully!")
-except Exception as e:
-    print(f"❌ Backend: FAILED TO LOAD MODEL: {e}")
-
-class TransactionData(BaseModel):
-    amount: float
-    oldbalanceOrg: float
-    newbalanceOrig: float
-    oldbalanceDest: float
-    newbalanceDest: float
-    location: str = "India"
-
+# ... imports ...
 @app.post("/predict")
-def predict(data: TransactionData):
-    # --- REALISM SCALE ---
-    # We divide the real-world amounts by 10,000 so that 
-    # ₹50,000 becomes 5.0 (which your model likes).
-    scale_factor = 10000 
+async def predict_route(data: TransactionRequest):
+    # 1. Get history from our new memory list
+    history = get_history()
+    user_history = [tx for tx in history if tx.get('nameOrig') == data.nameOrig]
     
-    scaled_features = np.array([[
-        data.amount / scale_factor, 
-        data.oldbalanceOrg / scale_factor, 
-        data.newbalanceOrig / scale_factor, 
-        data.oldbalanceDest / scale_factor, 
-        data.newbalanceDest / scale_factor
-    ]])
+    # 2. Run Models
+    status_a, pred_a = make_decision(data)
+    behavior_label, behavior_score = predict_behavior(data, user_history)
 
-    # 🤖 PURE ML PREDICTION
-    prediction = ai_model.predict(scaled_features)[0]
-    
-    status = "SUCCESS" if prediction == 1 else "BLOCKED"
-    
-    print(f"📥 Real Amount: ₹{data.amount} | Scaled: {data.amount/scale_factor} | Result: {status}")
+    # 3. Decision
+    final_status = "BLOCKED" if (status_a == "BLOCKED" or behavior_score == 1) else "SUCCESS"
+
+    # 4. SAVE IT (So the next time this user shows up, history_count > 0)
+    log_transaction(data, final_status)
 
     return {
-        "status": status,
-        "prediction": int(prediction),
-        "amount": data.amount
+        "status": final_status,
+        "behavioral_insight": behavior_label,
+        "history_count": len(user_history)
     }
 
-@app.get("/")
-def health_check():
-    return {"status": "Backend is ALIVE"}
+@app.get("/history")
+async def history_route():
+    return get_history()

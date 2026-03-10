@@ -1,27 +1,16 @@
-# schemas.py
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional
+from pydantic import BaseModel
 
-# This matches one PaySim-style transaction
 class TransactionRequest(BaseModel):
-    # Basic transaction fields (PaySim-like)
-    type: str                # e.g. "CASH_OUT", "TRANSFER", "PAYMENT"
+    nameOrig: str      # This matches generate_realistic_id() in streamer
+    nameDest: str      # This matches generate_realistic_id() in streamer
+    type: str          # Required for the AI to predict
     amount: float
     oldbalanceOrg: float
     newbalanceOrig: float
     oldbalanceDest: float
     newbalanceDest: float
-
-    # Optional extra fields if you want to send them
-    nameOrig: Optional[str] = None
-    nameDest: Optional[str] = None
-    isFlaggedFraud: Optional[int] = None  # 0 or 1, optional in requests
-
-
-class PredictionResponse(BaseModel):
-    is_fraud: bool           # model decision (True/False)
-    fraud_probability: float # 0–1 probability from model
-    message: Optional[str] = None
-
-    # If you want to attach reasons / feature info
-    reasons: Optional[List[str]] = None
+    location: str
+    device_id: str
+    gps_coords: str
