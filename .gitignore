@@ -3,3 +3,10 @@ __pycache__/
 *.pyc
 .ipynb_checkpoints/
 .env
+
+# Frontend
+node_modules/
+build/
+.DS_Store
+dist/node_modules/
+build/
