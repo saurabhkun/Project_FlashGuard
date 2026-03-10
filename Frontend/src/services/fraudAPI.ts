@@ -1,3 +1,23 @@
+// FlashGuard Pro API Service
+// Connects frontend to backend fraud detection system
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+// Types
+export interface TransactionRequest {
+  nameOrig: string;
+  nameDest: string;
+  type: string;
+  amount: number;
+  oldbalanceOrg: number;
+  newbalanceOrig: number;
+  oldbalanceDest: number;
+  newbalanceDest: number;
+  location: string;
+  device_id: string;
+  gps_coords: string;
+}
+
 export interface FraudCheckRequest {
   amount: number;
   transactionTime: string;
@@ -11,116 +31,302 @@ export interface FraudCheckRequest {
   failedLoginAttempts: number;
 }
 
-export interface FraudCheckResponse {
-  fraudProbability: number;
-  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
-  recommendation: 'ALLOW' | 'REVIEW' | 'BLOCK';
+export interface RiskScoreResponse {
+  risk_score: number;
+  level: 'LOW' | 'MEDIUM' | 'HIGH';
+  decision: 'ACCEPT' | 'REVIEW' | 'BLOCK';
   reasons: string[];
-  transactionId: string;
+  transaction_id: string;
+  is_new_user: boolean;
+  behavioral_insight?: string;
+  amount_deviation?: number;
+  velocity_anomaly?: boolean;
 }
 
-// Simulated fraud detection algorithm
-export const checkFraud = (data: FraudCheckRequest): FraudCheckResponse => {
-  let riskScore = 0;
-  const reasons: string[] = [];
+export interface DashboardStats {
+  total_transactions: number;
+  fraudulent_count: number;
+  suspicious_count: number;
+  safe_count: number;
+  fraud_detection_rate: number;
+  blocked_today: number;
+  total_volume: number;
+  average_transaction: number;
+  overall_risk_score: number;
+  recent_high_risk: Array<{
+    id: string;
+    amount: number;
+    location: string;
+    risk_score: number;
+    timestamp: string;
+    nameOrig: string;
+  }>;
+}
 
-  // High-risk countries
-  const highRiskCountries = ['Russia', 'Nigeria', 'China', 'Romania', 'Vietnam'];
-  if (highRiskCountries.some(country => data.location.includes(country))) {
-    riskScore += 25;
-    reasons.push('Transaction from high-risk location');
-  }
+export interface TransactionData {
+  id: string;
+  transaction_id: string;
+  nameOrig: string;
+  nameDest: string;
+  type: string;
+  amount: number;
+  timestamp: string;
+  location: string;
+  status: string;
+  riskScore: number;
+  actionTaken: string;
+  level?: string;
+  reasons?: string[];
+}
 
-  // Transaction amount
-  if (data.amount > 10000) {
-    riskScore += 20;
-    reasons.push('Unusually high transaction amount');
-  }
+export interface Alert {
+  id: string;
+  type: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  message: string;
+  timestamp: string;
+  related_user?: string;
+  acknowledged?: boolean;
+  metadata?: Record<string, unknown>;
+}
 
-  // Transaction time (late night)
-  const hour = new Date(data.transactionTime).getHours();
-  if (hour >= 0 && hour <= 5) {
-    riskScore += 15;
-    reasons.push('Transaction during unusual hours');
-  }
+export interface FeedbackRequest {
+  transaction_id: string;
+  user_feedback: 'GENUINE' | 'FRAUD';
+  feedback_type: 'false_positive' | 'false_negative';
+  comments?: string;
+}
 
-  // Device score
-  if (data.deviceScore < 60) {
-    riskScore += 15;
-    reasons.push('Low device trust score');
-  }
-
-  // IP Risk Score
-  if (data.ipRiskScore > 60) {
-    riskScore += 20;
-    reasons.push('High IP risk score detected');
-  }
-
-  // Account age
-  if (data.accountAge < 7) {
-    riskScore += 10;
-    reasons.push('New account (less than 7 days old)');
-  }
-
-  // Transaction frequency
-  if (data.transactionFrequency > 8) {
-    riskScore += 15;
-    reasons.push('Multiple transactions in short time');
-  }
-
-  // Failed login attempts
-  if (data.failedLoginAttempts > 2) {
-    riskScore += 10;
-    reasons.push('Multiple failed login attempts');
-  }
-
-  // Payment method risk
-  if (data.paymentMethod === 'Credit Card') {
-    riskScore += 5;
-  }
-
-  // High-risk merchant categories
-  const highRiskCategories = ['Electronics', 'Jewelry', 'Gift Cards'];
-  if (highRiskCategories.includes(data.merchantCategory)) {
-    riskScore += 10;
-    reasons.push('High-risk merchant category');
-  }
-
-  // Determine risk level and recommendation
-  let riskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
-  let recommendation: 'ALLOW' | 'REVIEW' | 'BLOCK';
-
-  if (riskScore >= 70) {
-    riskLevel = 'HIGH';
-    recommendation = 'BLOCK';
-  } else if (riskScore >= 40) {
-    riskLevel = 'MEDIUM';
-    recommendation = 'REVIEW';
-  } else {
-    riskLevel = 'LOW';
-    recommendation = 'ALLOW';
-  }
-
-  // If no risk factors found
-  if (reasons.length === 0) {
-    reasons.push('All parameters within normal range');
-  }
-
-  return {
-    fraudProbability: Math.min(riskScore, 99),
-    riskLevel,
-    recommendation,
-    reasons,
-    transactionId: `TXN-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
-  };
-};
-
-// Mock API delay
-export const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-export const fraudAPI = {
-  checkFraud: async (data: FraudCheckRequest): Promise<FraudCheckResponse> => {
-    await delay(1500); // Simulate API call
-    return checkFraud(data);
+// API Service
+const api = {
+  // ==================== PREDICTION ====================
+  
+  /**
+   * Check if a transaction is fraudulent
+   */
+  async checkTransaction(data: TransactionRequest): Promise<RiskScoreResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/predict`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error checking transaction:', error);
+      throw error;
+    }
   },
+
+  // ==================== DASHBOARD ====================
+  
+  /**
+   * Get dashboard statistics
+   */
+  async getDashboardStats(): Promise<DashboardStats> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/dashboard/stats`);
+      
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching dashboard stats:', error);
+      throw error;
+    }
+  },
+
+  // ==================== TRANSACTIONS ====================
+  
+  /**
+   * Get all transactions with optional filters
+   */
+  async getTransactions(limit?: number, status?: string): Promise<{ transactions: TransactionData[]; count: number }> {
+    try {
+      let url = `${API_BASE_URL}/transactions?`;
+      if (limit) url += `limit=${limit}&`;
+      if (status) url += `status=${status}&`;
+      
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get a specific transaction by ID
+   */
+  async getTransaction(transactionId: string): Promise<TransactionData> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/transactions/${transactionId}`);
+      
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching transaction:', error);
+      throw error;
+    }
+  },
+
+  // ==================== ALERTS ====================
+  
+  /**
+   * Get all alerts with optional filters
+   */
+  async getAlerts(limit?: number, severity?: string): Promise<{ alerts: Alert[]; count: number }> {
+    try {
+      let url = `${API_BASE_URL}/alerts?`;
+      if (limit) url += `limit=${limit}&`;
+      if (severity) url += `severity=${severity}&`;
+      
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching alerts:', error);
+      throw error;
+    }
+  },
+
+  // ==================== FEEDBACK ====================
+  
+  /**
+   * Submit feedback for a transaction
+   */
+  async submitFeedback(data: FeedbackRequest): Promise<{ success: boolean; message: string; feedback_id: string }> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/feedback`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error submitting feedback:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get feedback history
+   */
+  async getFeedbackHistory(userId?: string, limit?: number): Promise<{ feedback: unknown[]; count: number }> {
+    try {
+      let url = `${API_BASE_URL}/feedback?`;
+      if (userId) url += `user_id=${userId}&`;
+      if (limit) url += `limit=${limit}&`;
+      
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching feedback history:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get feedback statistics
+   */
+  async getFeedbackStats(): Promise<{
+    total_feedback: number;
+    false_positives: number;
+    false_negatives: number;
+    adjustment_factor: number;
+  }> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/feedback/stats`);
+      
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching feedback stats:', error);
+      throw error;
+    }
+  },
+
+  // ==================== USER BEHAVIOR ====================
+  
+  /**
+   * Get user behavior profile
+   */
+  async getUserBehavior(userId: string): Promise<{
+    user_id: string;
+    is_new: boolean;
+    avg_amount: number;
+    max_amount: number;
+    transaction_count: number;
+    trust_score: number;
+  }> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/users/${userId}/behavior`);
+      
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching user behavior:', error);
+      throw error;
+    }
+  },
+
+  // ==================== HEALTH CHECK ====================
+  
+  /**
+   * Check if API is available
+   */
+  async healthCheck(): Promise<{ status: string; service: string; version: string }> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/`);
+      return await response.json();
+    } catch (error) {
+      console.error('Health check failed:', error);
+      throw error;
+    }
+  }
 };
+
+export default api;
+
+// Export for direct usage
+export const fraudAPI = api;
+

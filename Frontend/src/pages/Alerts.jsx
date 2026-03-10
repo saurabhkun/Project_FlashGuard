@@ -1,23 +1,74 @@
+import { useState, useEffect } from 'react';
 import { AlertPanel } from '../components/AlertPanel';
-import { mockAlerts } from '../data/mockTransactions';
+import { fraudAPI } from '../services/fraudAPI';
+import { mockAlerts } from '../data/mockData';
 import { Shield, TrendingDown, Clock } from 'lucide-react';
 
 export default function Alerts() {
-  const highAlerts = mockAlerts.filter((a) => a.severity === 'high').length;
-  const mediumAlerts = mockAlerts.filter((a) => a.severity === 'medium').length;
-  const lowAlerts = mockAlerts.filter((a) => a.severity === 'low').length;
+  const [alerts, setAlerts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [severityFilter, setSeverityFilter] = useState('all');
+
+  useEffect(() => {
+    loadAlerts();
+  }, [severityFilter]);
+
+  const loadAlerts = async () => {
+    try {
+      setLoading(true);
+      const severity = severityFilter === 'all' ? undefined : severityFilter;
+      const data = await fraudAPI.getAlerts(50, severity);
+      setAlerts(data.alerts);
+      setError(null);
+    } catch (err) {
+      console.error('Failed to load alerts:', err);
+      setError('Failed to connect to backend. Showing mock data.');
+      // Use mock data as fallback
+      let filtered = mockAlerts;
+      if (severityFilter !== 'all') {
+        filtered = mockAlerts.filter(a => a.severity === severityFilter);
+      }
+      setAlerts(filtered);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const highAlerts = alerts.filter((a) => a.severity === 'high').length;
+  const mediumAlerts = alerts.filter((a) => a.severity === 'medium').length;
+  const lowAlerts = alerts.filter((a) => a.severity === 'low').length;
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-blue-700 mb-2">
-
           Fraud Alerts
         </h1>
         <p className="text-gray-600 dark:text-gray-400">
           Monitor and manage suspicious activities in real-time
         </p>
+        {error && (
+          <p className="text-sm text-yellow-600 mt-2">
+            ⚠️ {error}
+          </p>
+        )}
+      </div>
+
+      {/* Filter */}
+      <div className="flex items-center space-x-4">
+        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Filter by severity:</span>
+        <select
+          value={severityFilter}
+          onChange={(e) => setSeverityFilter(e.target.value)}
+          className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+        >
+          <option value="all">All</option>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </select>
       </div>
 
       {/* Stats */}
@@ -68,13 +119,20 @@ export default function Alerts() {
         </div>
       </div>
 
-      {/* Alerts List */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
-          Recent Alerts
-        </h2>
-        <AlertPanel alerts={mockAlerts} />
-      </div>
+      {/* Loading State */}
+      {loading ? (
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      ) : (
+        /* Alerts List */
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
+            Recent Alerts
+          </h2>
+          <AlertPanel alerts={alerts} />
+        </div>
+      )}
 
       {/* Alert Settings */}
       <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700">
@@ -146,3 +204,4 @@ export default function Alerts() {
     </div>
   );
 }
+

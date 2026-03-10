@@ -1,77 +1,82 @@
+import pandas as pd
+import os
+import random
 import requests
 import time
-import random
-import sys
 
-# Direct IP
-URL = "http://127.0.0.1:8000/predict"
+# ⚙️ UPDATED CONFIGURATION (Based on your folder structure)
+# Your CSV is in a folder named 'data' inside the root directory
+CSV_PATH = os.path.join("..", "data", "processed_paysim.csv")
+API_URL = "http://127.0.0.1:8000/predict"
+LOCATIONS = ["Mumbai", "Delhi", "Bangalore", "London", "New York"]
 
-# --- NEW: USER POOL FOR BEHAVIORAL TESTING ---
-# We use these IDs repeatedly to trigger "High Velocity" alerts
-TEST_USER_POOL = ["C999888777", "C555444333", "C111222333"]
+print(f"📂 Looking for dataset at: {os.path.abspath(CSV_PATH)}")
 
-def generate_realistic_id():
-    """Generates PaySim style IDs like C123456789"""
-    return f"C{random.randint(100000000, 999999999)}"
+# 📂 LOAD DATASET
+if os.path.exists(CSV_PATH):
+    try:
+        df = pd.read_csv(CSV_PATH)
+        print(f"✅ Dataset loaded! ({len(df)} rows)")
+        USING_CSV = True
+    except Exception as e:
+        print(f"⚠️ Error reading CSV: {e}")
+        USING_CSV = False
+else:
+    print(f"❌ CSV not found. Please check the path.")
+    USING_CSV = False
 
-def run_streamer():
-    print("🚀 FlashGuard Behavioral Simulation: STARTING...")
-    print(f"📡 Target API: {URL}")
-    print("💡 Note: Repeating User IDs to trigger Behavioral Model B")
-    print("-" * 60)
-
-    while True:
-        # 1. Decide if we use a repeat user (70% chance) or a new user (30% chance)
-        if random.random() < 0.7:
-            user_id = random.choice(TEST_USER_POOL)
+def generate_transaction():
+    if USING_CSV:
+        # 20% probability to pick a REAL fraud row from the dataset for the demo
+        if random.random() < 0.2:
+            fraud_rows = df[df['isFraud'] == 1]
+            row = fraud_rows.sample(1).iloc[0] if not fraud_rows.empty else df.sample(1).iloc[0]
         else:
-            user_id = generate_realistic_id()
+            row = df.sample(1).iloc[0]
+        
+        def get_val(keys, default=0):
+            for k in keys:
+                if k in row: return row[k]
+                for ak in row.index:
+                    if k.lower() == ak.lower(): return row[ak]
+            return default
 
-        # 2. Generate Data
-        amt = random.choice([450.0, 1200.0, 3500.0, 52000.0, 89000.0])
-        start_bal = random.uniform(100000.0, 500000.0)
-        loc = random.choice(["Mumbai", "Delhi", "Bangalore", "Kolkata", "Remote IP"])
-
-        sample_data = {
-            "nameOrig": user_id,
-            "nameDest": generate_realistic_id(),
-            "type": random.choice(['PAYMENT', 'TRANSFER', 'CASH_OUT']),
-            "amount": round(amt, 2),
-            "oldbalanceOrg": round(start_bal, 2),
-            "newbalanceOrig": round(start_bal - amt, 2),
-            "oldbalanceDest": 5000.0,
-            "newbalanceDest": 5000.0 + amt,
-            "location": loc,
-            "device_id": f"ID-{random.randint(1000, 9999)}",
-            "gps_coords": f"{random.uniform(12.0, 28.0):.4f}, {random.uniform(72.0, 85.0):.4f}"
+        return {
+            "step": int(get_val(['step'], 1)),
+            "type": str(get_val(['type'], 'TRANSFER')),
+            "amount": round(float(get_val(['amount'], 0)), 2),
+            "nameOrig": str(get_val(['nameOrig', 'nameorig'], f"C{random.randint(1000, 9999)}")),
+            "oldbalanceOrg": float(get_val(['oldbalanceOrg'], 0)),
+            "newbalanceOrig": float(get_val(['newbalanceOrig'], 0)),
+            "nameDest": str(get_val(['nameDest'], "M123")),
+            "oldbalanceDest": float(get_val(['oldbalanceDest'], 0)),
+            "newbalanceDest": float(get_val(['newbalanceDest'], 0)),
+            "location": random.choice(LOCATIONS),
+            "device_id": f"D-{random.randint(100, 999)}",
+            "gps_coords": "19.07, 72.87",
+            "is_fraud_label": int(get_val(['isFraud', 'isfraud'], 0)) # Send the truth!
         }
-
-        try:
-            # 3. Send to Backend
-            response = requests.post(URL, json=sample_data, timeout=5)
+        
+    
+def start_streaming():
+    print("🚀 FlashGuard Streamer Started!")
+    while True:
+        txn = generate_transaction()
+        if not txn:
+            print("❌ No data to send.")
+            break
             
+        try:
+            response = requests.post(API_URL, json=txn)
             if response.status_code == 200:
-                result = response.json()
-                status = result.get('status', 'UNKNOWN')
-                insight = result.get('behavioral_insight', 'Analyzing...')
-                h_count = result.get('history_count', 0)
-                
-                icon = "🚨" if status == "BLOCKED" else "✅"
-                
-                # 4. ENHANCED PRINT: Shows the history and the behavioral verdict
-                print(f"{icon} User: {user_id} | Hist: {h_count} | Status: {status:<8} | Insight: {insight}")
+                res_data = response.json()
+                print(f"✅ Sent: {txn['nameOrig']} | ₹{txn['amount']} | Result: {res_data.get('decision', 'OK')}")
             else:
-                print(f"⚠️ Server Error: {response.status_code}")
-                
+                print(f"❌ Server Error {response.status_code}: {response.text}")
         except Exception as e:
-            print(f"❌ Connection Failed: {e}")
-
-        # Wait 2 seconds for readability
+            print(f"🔌 Connection Error: {e}")
+        
         time.sleep(2)
 
 if __name__ == "__main__":
-    try:
-        run_streamer()
-    except KeyboardInterrupt:
-        print("\n🛑 Streamer stopped by user.")
-        sys.exit()
+    start_streaming()

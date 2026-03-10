@@ -1,12 +1,17 @@
-data/
+# === Data ===
+# Ignores the heavy dataset (GitHub limit is 100MB)
+processed_paysim.csv
+*.csv
+
+# === Backend ===
 __pycache__/
-*.pyc
-.ipynb_checkpoints/
+.venv/
+venv/
 .env
 
-# Frontend
+# === Frontend ===
 node_modules/
-build/
+dist/
+.vscode/
 .DS_Store
-dist/node_modules/
-build/
+*.local
