@@ -1,0 +1,126 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+}
+
+/* ── Desktop: gradient showcase background ── */
+body {
+  background: linear-gradient(160deg, #E2EBF9 0%, #C8D9F5 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  min-height: 100vh;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  padding: 28px 16px 48px;
+  gap: 20px;
+}
+
+/* ── Real phone (<520px): full-screen native feel ── */
+@media (max-width: 519px) {
+  body {
+    background: #F0F4FD;
+    padding: 0;
+    gap: 0;
+    align-items: stretch;
+    overflow: hidden;
+  }
+
+  .desktop-only {
+    display: none !important;
+  }
+
+  .phone-shell {
+    width: 100% !important;
+    height: 100dvh !important;
+    min-height: 100dvh !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .phone-notch {
+    display: none !important;
+  }
+
+  /* Safe area: notch phones */
+  .sb-pad {
+    padding-top: max(env(safe-area-inset-top, 0px), 44px) !important;
+  }
+
+  /* Safe area: home indicator */
+  .nav-safe {
+    padding-bottom: max(env(safe-area-inset-bottom, 0px), 20px) !important;
+  }
+}
+
+/* ── Tablet (520–880px): centered frame, no outer chrome ── */
+@media (min-width: 520px) and (max-width: 880px) {
+  .desktop-only {
+    display: none !important;
+  }
+
+  body {
+    padding: 20px;
+    background: #C8D9F5;
+  }
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 0; height: 0; }
+* { scrollbar-width: none; }
+
+/* ── Mobile touch ── */
+button, a { -webkit-tap-highlight-color: transparent; outline: none; }
+input { -webkit-appearance: none; font-family: inherit; }
+.scroll-area { -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+
+/* ─────────────────────────────────────────
+   ANIMATIONS
+───────────────────────────────────────── */
+@keyframes up {
+  from { transform: translateY(20px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+@keyframes pop {
+  from { transform: scale(0.93); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes scan {
+  0%   { top: 10%; }
+  50%  { top: 76%; }
+  100% { top: 10%; }
+}
+
+@keyframes badge {
+  0%   { transform: translateY(-64px) scale(0.9); opacity: 0; }
+  12%  { transform: translateY(0)     scale(1);   opacity: 1; }
+  82%  { transform: translateY(0)     scale(1);   opacity: 1; }
+  100% { transform: translateY(-64px) scale(0.9); opacity: 0; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Animation utility classes ── */
+.up        { animation: up        0.38s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.pop       { animation: pop       0.28s ease both; }
+.spin      { animation: spin      0.7s  linear    infinite; }
+.scan      { animation: scan      1.8s  ease-in-out infinite; }
+.badge-in  { animation: badge     5.5s  cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+.fade-in   { animation: fadeIn    0.3s  ease both; }

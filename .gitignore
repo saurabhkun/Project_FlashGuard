@@ -1,17 +1,28 @@
-# === Data ===
+# === Data & Large Files ===
 # Ignores the heavy dataset (GitHub limit is 100MB)
-processed_paysim.csv
 *.csv
+processed_paysim.csv
 
-# === Backend ===
+# === Python / Backend ===
 __pycache__/
+*.py[cod]
+*$py.class
 .venv/
 venv/
 .env
 
-# === Frontend ===
+# === Database ===
+# Keeps your local data private and avoids merge conflicts
+*.db
+*.sqlite3
+
+# === Node / React Frontend ===
 node_modules/
 dist/
+.eslintcache
 .vscode/
+
+# === System Files ===
 .DS_Store
+Thumbs.db
 *.local
