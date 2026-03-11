@@ -28,7 +28,7 @@ FlashGuard Pro is an end-to-end financial surveillance stack that uses Machine L
 ---
 | 📊 **Dashboard** | 🧠 **Mobile Application** |
 |:---:|:---:|
-| ![Dashboard]() | ![AI Categorization]() |
+| ![Dashboard]() | ![AI Categorization](https://github.com/saurabhkun/CHK-1772903081690-6260/blob/315c942658965b446b7315a5ce54c63dd45e3618/Screenshot%202026-03-11%20022230.png) |
 
 
 
@@ -94,4 +94,5 @@ npm run dev
 * **CSV Path**: The streamer looks for data in `data/processed_paysim.csv`.
 * **API URL**: Configured to `http://127.0.0.1:8000` by default.
 * **CORS**: Enabled for all origins (`*`) for easy local development.
+
 
