@@ -26,6 +26,11 @@ FlashGuard Pro is an end-to-end financial surveillance stack that uses Machine L
 * **Data Science**: Pandas, Scikit-learn (ML models)
 
 ---
+| 📊 **Dashboard** | 🧠 **Mobile Application** |
+|:---:|:---:|
+| ![Dashboard]() | ![AI Categorization]() |
+
+
 
 ## 🏁 Getting Started (Launch Sequence)
 
@@ -38,6 +43,7 @@ pip install -r requirements.txt
 python main.py
 
 ```
+
 
 *Initializes `flashguard.db` and listens on `http://127.0.0.1:8000`.*
 
@@ -88,3 +94,4 @@ npm run dev
 * **CSV Path**: The streamer looks for data in `data/processed_paysim.csv`.
 * **API URL**: Configured to `http://127.0.0.1:8000` by default.
 * **CORS**: Enabled for all origins (`*`) for easy local development.
+
