@@ -1,5 +1,4 @@
-![FinTech Winner](https://img.shields.io/badge/Rank-1st_in_FinTech_Domain-gold?style=for-the-badge&logo=target)
-![Total Teams](https://img.shields.io/badge/Competition-157_Teams-blue?style=for-the-badge)
+
 
 
 
