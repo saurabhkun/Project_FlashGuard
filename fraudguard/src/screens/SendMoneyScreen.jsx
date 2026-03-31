@@ -13,17 +13,15 @@ import {
 const SendMoneyScreen = ({setScreen,setAnalysisResult,setCurrentTxn}) => {
   const [receiver,setReceiver] = useState("");
   const [amount,setAmount]     = useState("");
-  const [cat,setCat]           = useState("food");
+  const [pin,setPin]           = useState("");
   const [loc,setLoc]           = useState("Mumbai, IN");
   const [analyzing,setAnalyzing] = useState(false);
   const [warn,setWarn]           = useState(null);
 
-  const cats = ["food","shopping","transport","entertainment","crypto","gambling","medical","utilities"];
-
   const send = () => {
-    if(!receiver||!amount) return;
+    if(!receiver || !amount || pin.length < 4) return;
     setAnalyzing(true); setWarn(null);
-    const d = {sender:"Arjun Mehta",receiver,amount:parseFloat(amount),location:loc,merchantCategory:cat,
+    const d = {sender:"Arjun Mehta",receiver,amount:parseFloat(amount),location:loc, merchantCategory:"TRANSFER",
                deviceScore:72,ipRiskScore:20,accountTrust:75,behaviorScore:68,failedLoginAttempts:0,txnCount:2,
                nameOrig:"USER001",nameDest:receiver,oldbalanceOrg:50000,newbalanceOrig:50000-parseFloat(amount),
                oldbalanceDest:10000,newbalanceDest:10000+parseFloat(amount),type:"TRANSFER"};
@@ -50,7 +48,7 @@ const SendMoneyScreen = ({setScreen,setAnalysisResult,setCurrentTxn}) => {
   };
 
   const proceed = () => {
-    const d={sender:"Arjun Mehta",receiver,amount:parseFloat(amount),location:loc,merchantCategory:cat,
+    const d={sender:"Arjun Mehta",receiver,amount:parseFloat(amount),location:loc,merchantCategory:"TRANSFER",
              deviceScore:72,ipRiskScore:20,accountTrust:75,behaviorScore:68,failedLoginAttempts:0,txnCount:2};
     const r=fraudEngine(d);
     setAnalysisResult(r);
@@ -96,19 +94,7 @@ const SendMoneyScreen = ({setScreen,setAnalysisResult,setCurrentTxn}) => {
         </div>
 
         <div style={{marginBottom:14}}>
-          <div style={{color:C.textMd,fontSize:12,marginBottom:6,fontWeight:600}}>What's this payment for?</div>
-          <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-            {cats.map(c=>(
-              <button key={c} onClick={()=>setCat(c)} style={{
-                padding:"6px 14px",borderRadius:20,cursor:"pointer",
-                background:cat===c?C.blue:"#fff",
-                border:`1.5px solid ${cat===c?C.blue:C.border}`,
-                color:cat===c?"#fff":C.textMd,
-                fontSize:12,fontWeight:600,fontFamily:"'Plus Jakarta Sans',sans-serif",
-                textTransform:"capitalize"
-              }}>{c}</button>
-            ))}
-          </div>
+          <Inp label="Enter 4-Digit Security PIN" type="password" value={pin} onChange={(v)=>setPin(v.replace(/\D/g,'').slice(0, 4))} placeholder="****" icon="🔐"/>
         </div>
 
         <Inp label="Sending from" value={loc} onChange={setLoc} placeholder="Your location" icon="📍"/>
@@ -121,7 +107,7 @@ const SendMoneyScreen = ({setScreen,setAnalysisResult,setCurrentTxn}) => {
           </div>
         </div>
 
-        <Btn onClick={send} disabled={analyzing||!receiver||!amount}>
+        <Btn onClick={send} disabled={analyzing || !receiver || !amount || pin.length < 4}>
           {analyzing
             ? <span style={{display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
                 <span className="spin" style={{display:"inline-block",width:16,height:16,border:"2.5px solid #fff",borderTopColor:"transparent",borderRadius:"50%"}}/>

@@ -34,50 +34,38 @@ FlashGuard Pro is an end-to-end financial surveillance stack that uses Machine L
 
 ## 🏁 Getting Started (Launch Sequence)
 
-To see the live system in action, follow these steps in **four separate terminals**.
+To see the live system in action, follow these steps in **three separate terminals**.
 
-### 1️⃣ Terminal: The Backend Engine
+### 1️⃣ Terminal: The Backend API
 ```bash
 cd backend
 pip install -r requirements.txt
 python main.py
-
 ```
-
-
 *Initializes `flashguard.db` and listens on `http://127.0.0.1:8000`.*
 
-### 2️⃣ Terminal: The Live Streamer
-
+### 2️⃣ Terminal: The Analytics Dashboard
 ```bash
-cd backend
-python streamer.py
-
-```
-
-*Replays historical transaction data into the API to populate charts.*
-
-### 3️⃣ Terminal: The Analytics Dashboard
-
-```bash
-cd frontend
+cd Frontend
 npm install
 npm run dev
-
 ```
-
 *Visualizes real-time metrics and risk trends.*
 
-### 4️⃣ Terminal: The Main FraudGuard App
-
+### 3️⃣ Terminal: The Main FraudGuard App
 ```bash
 cd fraudguard
 npm install
 npm run dev
-
 ```
+*Launches the primary end-user payment interface (mobile-view simulation).*
 
-*Launches the primary management interface.*
+*(Optional) 4️⃣ Terminal: The Live Streamer*
+```bash
+cd backend
+python streamer.py
+```
+*Replays historical transaction data into the API to populate dashboard charts.*
 
 ---
 

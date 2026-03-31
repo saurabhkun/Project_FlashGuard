@@ -11,6 +11,8 @@ export default function TransactionTable({ transactions }) {
       status: txn.status || 'Unknown',
       type: txn.type || 'N/A',
       timestamp: txn.timestamp || null,
+      ipAddress: txn.ip_address || 'N/A',
+      deviceId: txn.device_id || 'Unknown',
     };
   };
 
@@ -23,6 +25,8 @@ export default function TransactionTable({ transactions }) {
             <th className="px-4 py-3 text-left">User</th>
             <th className="px-4 py-3 text-left">Type</th>
             <th className="px-4 py-3 text-left">Amount</th>
+            <th className="px-4 py-3 text-left">IP Address</th>
+            <th className="px-4 py-3 text-left">Device ID</th>
             <th className="px-4 py-3 text-left">Location</th>
             <th className="px-4 py-3 text-left">Risk Score</th>
             <th className="px-4 py-3 text-left">Status</th>
@@ -38,6 +42,8 @@ export default function TransactionTable({ transactions }) {
                   <td className="px-4 py-3">{normalized.userId}</td>
                   <td className="px-4 py-3">{normalized.type}</td>
                   <td className="px-4 py-3">₹{normalized.amount.toLocaleString()}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-gray-500">{normalized.ipAddress}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-gray-500 truncate max-w-[100px]">{normalized.deviceId}</td>
                   <td className="px-4 py-3">{normalized.location}</td>
                   <td className="px-4 py-3">
                     <span className={`font-medium ${
@@ -65,7 +71,7 @@ export default function TransactionTable({ transactions }) {
             })
           ) : (
             <tr>
-              <td colSpan="7" className="px-4 py-8 text-center text-gray-500">
+              <td colSpan="9" className="px-4 py-8 text-center text-gray-500">
                 No transactions found
               </td>
             </tr>

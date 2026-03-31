@@ -6,23 +6,23 @@ import time
 
 # ⚙️ UPDATED CONFIGURATION (Based on your folder structure)
 # Your CSV is in a folder named 'data' inside the root directory
-CSV_PATH = os.path.join("..", "data", "processed_paysim.csv")
+CSV_PATH = os.path.join("..", "data", "paysim.csv")
 API_URL = "http://127.0.0.1:8000/predict"
-LOCATIONS = ["Mumbai", "Delhi", "Bangalore", "London", "New York"]
+LOCATIONS = ["Mumbai", "Delhi", "Bangalore", "London", "New York", "San Francisco", "Tokyo"]
 
-print(f"📂 Looking for dataset at: {os.path.abspath(CSV_PATH)}")
+print(f"📂 Looking for true Paysim dataset at: {os.path.abspath(CSV_PATH)}")
 
 # 📂 LOAD DATASET
 if os.path.exists(CSV_PATH):
     try:
-        df = pd.read_csv(CSV_PATH)
-        print(f"✅ Dataset loaded! ({len(df)} rows)")
+        df = pd.read_csv(CSV_PATH, nrows=200000) # Load a chunk of true dataset for speed
+        print(f"✅ True Dataset loaded! ({len(df)} rows)")
         USING_CSV = True
     except Exception as e:
         print(f"⚠️ Error reading CSV: {e}")
         USING_CSV = False
 else:
-    print(f"❌ CSV not found. Please check the path.")
+    print(f"❌ true paysim.csv not found. Please check the path.")
     USING_CSV = False
 
 def generate_transaction():
@@ -45,10 +45,10 @@ def generate_transaction():
             "step": int(get_val(['step'], 1)),
             "type": str(get_val(['type'], 'TRANSFER')),
             "amount": round(float(get_val(['amount'], 0)), 2),
-            "nameOrig": str(get_val(['nameOrig', 'nameorig'], f"C{random.randint(1000, 9999)}")),
+            "nameOrig": str(get_val(['nameOrig', 'nameorig'], "UNKNOWN_SENDER")),
             "oldbalanceOrg": float(get_val(['oldbalanceOrg'], 0)),
             "newbalanceOrig": float(get_val(['newbalanceOrig'], 0)),
-            "nameDest": str(get_val(['nameDest'], "M123")),
+            "nameDest": str(get_val(['nameDest'], "UNKNOWN_RECIPIENT")),
             "oldbalanceDest": float(get_val(['oldbalanceDest'], 0)),
             "newbalanceDest": float(get_val(['newbalanceDest'], 0)),
             "location": random.choice(LOCATIONS),

@@ -13,8 +13,9 @@ class TransactionRequest(BaseModel):
     oldbalanceDest: float
     newbalanceDest: float
     location: str
+    ip_address: Optional[str] = "0.0.0.0"
     device_id: Optional[str] = "Unknown"
-    gps_coords: Optional[str] = "0.0, 0.0"
+    gps_coordinates: Optional[str] = "0.0, 0.0"
     # NEW: Added to catch the truth from the dataset
     is_fraud_label: Optional[int] = 0 
 

@@ -30,8 +30,9 @@ def init_db():
             oldbalanceDest REAL,
             newbalanceDest REAL,
             location TEXT,
+            ip_address TEXT,
             device_id TEXT,
-            gps_coords TEXT,
+            gps_coordinates TEXT,
             status TEXT,
             risk_score INTEGER,
             level TEXT,
@@ -79,7 +80,7 @@ def get_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
-def log_transaction(data, status, risk_score=0, level="LOW", reasons=None) -> str:
+def log_transaction(data, status, risk_score=0, level="LOW", reasons=None, timestamp=None) -> str:
     """Save transaction to database"""
     import uuid
     
@@ -93,16 +94,17 @@ def log_transaction(data, status, risk_score=0, level="LOW", reasons=None) -> st
         data = data.model_dump()
     
     transaction_id = f"TXN-{uuid.uuid4().hex[:8].upper()}"
-    timestamp = datetime.now().isoformat()
+    if not timestamp:
+        timestamp = datetime.now().isoformat()
     
     try:
         cursor.execute('''
             INSERT INTO transactions (
                 transaction_id, step, type, amount, nameOrig, oldbalanceOrg,
                 newbalanceOrig, nameDest, oldbalanceDest, newbalanceDest,
-                location, device_id, gps_coords, status, risk_score, level,
+                location, ip_address, device_id, gps_coordinates, status, risk_score, level,
                 reasons, timestamp
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             transaction_id,
             data.get('step', 1),
@@ -115,8 +117,9 @@ def log_transaction(data, status, risk_score=0, level="LOW", reasons=None) -> st
             data.get('oldbalanceDest', 0),
             data.get('newbalanceDest', 0),
             data.get('location', 'Unknown'),
+            data.get('ip_address', '0.0.0.0'),
             data.get('device_id', 'Unknown'),
-            data.get('gps_coords', '0,0'),
+            data.get('gps_coordinates', '0.0, 0.0'),
             status,
             risk_score,
             level,

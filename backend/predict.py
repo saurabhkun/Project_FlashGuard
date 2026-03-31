@@ -5,6 +5,7 @@ import pandas as pd
 import uuid
 from datetime import datetime
 from typing import Tuple, List, Dict
+from security_engine import calculate_distance, calculate_recipient_risk
 
 # 1. SETUP PATHS
 # Since flashguard_model.pkl is in the SAME folder as this script
@@ -159,10 +160,37 @@ def calculate_risk_score(data, user_history: List[dict] = None) -> dict:
     
     # Check location change (impossible travel)
     if user_history and len(user_history) > 0:
-        last_location = user_history[0].get('location', '')
+        last_tx = user_history[0]
+        last_location = last_tx.get('location', '')
         if last_location and last_location != data.location:
             risk_score += 10
             reasons.append("Location mismatch from previous transaction")
+            
+        # TASK 1: Distance > 500km in under 1 hour
+        if hasattr(data, 'gps_coordinates') and data.gps_coordinates and data.gps_coordinates != "0.0, 0.0":
+            last_gps = last_tx.get('gps_coordinates', "0.0, 0.0")
+            if last_gps and last_gps != "0.0, 0.0":
+                try:
+                    lat1, lon1 = data.gps_coordinates.split(',')
+                    lat2, lon2 = last_gps.split(',')
+                    dist = calculate_distance(lat1, lon1, lat2, lon2)
+                    
+                    time_diff_hours = 0
+                    last_time_str = last_tx.get('timestamp')
+                    if last_time_str:
+                        if isinstance(last_time_str, str):
+                            # Handle different ISO formats
+                            clean_time = last_time_str.split('.')[0].replace('Z', '')
+                            last_time = datetime.fromisoformat(clean_time)
+                        else:
+                            last_time = last_time_str
+                        time_diff_hours = (datetime.now() - last_time).total_seconds() / 3600
+                    
+                    if dist > 500 and time_diff_hours < 1:
+                        risk_score += 40
+                        reasons.append(f"Impossible travel: >500km ({dist:.0f}km) in under 1 hour")
+                except Exception as e:
+                    print(f"Error calculating impossible travel: {e}")
     
     # ============ TIME ANOMALY (0-10 points) ============
     # Unusual hours (late night: 12am - 5am)
@@ -180,6 +208,12 @@ def calculate_risk_score(data, user_history: List[dict] = None) -> dict:
     if data.oldbalanceOrg > 0 and data.amount > data.oldbalanceOrg * 0.9:
         risk_score += 10
         reasons.append("Draining most of account balance")
+        
+    # ============ TASK 2: RECIPIENT RISK FACTOR ============
+    recipient_risk = calculate_recipient_risk(data.nameDest)
+    if recipient_risk > 0:
+        risk_score += recipient_risk
+        reasons.append(f"High risk recipient metadata (Risk Factor: +{recipient_risk})")
     
     # Cap risk score at 100
     risk_score = min(risk_score, 100)

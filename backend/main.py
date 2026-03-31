@@ -1,9 +1,11 @@
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from typing import Optional, List, Dict
 from datetime import datetime
 import random
 import uvicorn
+import json
 
 # Importing your logic
 from schemas import (
@@ -23,8 +25,13 @@ from redis_logger import (
 )
 from behavioral_model import predict_behavior
 from feedback import apply_feedback_learning
+from seed_paysim import seed_if_empty
 
 app = FastAPI(title="FlashGuard Pro API", version="2.0.0")
+
+@app.on_event("startup")
+async def startup_event():
+    seed_if_empty()
 
 # 1. ROBUST CORS CONFIGURATION
 # Essential to prevent "Failed to fetch" errors in React
@@ -35,6 +42,59 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# --- RATE LIMITING MIDDLEWARE ---
+RATE_LIMIT_MAP = {}
+RATE_LIMIT_SECONDS = 2.0
+
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    client_ip = request.client.host
+    now = datetime.now().timestamp()
+    
+    # Rate limit only the expensive /predict endpoint
+    if request.url.path == "/predict" and request.method == "POST":
+        if client_ip in RATE_LIMIT_MAP:
+            time_passed = now - RATE_LIMIT_MAP[client_ip]
+            if time_passed < RATE_LIMIT_SECONDS:
+                return JSONResponse(status_code=429, content={"detail": "Too Many Requests - Rate limit exceeded. Try again later."})
+        RATE_LIMIT_MAP[client_ip] = now
+        
+    return await call_next(request)
+
+# --- WEBSOCKET CONNECTION MANAGER ---
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: List[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
+
+    async def broadcast(self, message: str):
+        for connection in list(self.active_connections):
+            try:
+                await connection.send_text(message)
+            except Exception as e:
+                print(f"Failed to send WS message: {e}")
+                self.disconnect(connection)
+
+manager = ConnectionManager()
+
+@app.websocket("/ws/alerts")
+async def websocket_endpoint(websocket: WebSocket):
+    await manager.connect(websocket)
+    try:
+        while True:
+            # wait for messages to keep the connection alive
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+
 
 @app.post("/predict", response_model=RiskScoreResponse)
 async def predict_route(data: TransactionRequest):
@@ -75,8 +135,8 @@ async def predict_route(data: TransactionRequest):
         add_alert(alert_type="FRAUD_ATTEMPT", severity="high",
                   message=f"Fraud Blocked: {data.nameOrig} (₹{data.amount})",
                   related_user=data.nameOrig)
-    
-    return RiskScoreResponse(
+
+    response_obj = RiskScoreResponse(
         risk_score=int(adjusted_score),
         level=final_status,
         decision=action,
@@ -87,6 +147,21 @@ async def predict_route(data: TransactionRequest):
         amount_deviation=risk_result.get('amount_deviation', 0.0),
         velocity_anomaly=risk_result.get('velocity_anomaly', False)
     )
+
+    # Broadcast combined prediction result and requested data to connected WebSocket clients
+    try:
+        req_dict = data.model_dump()
+        res_dict = response_obj.model_dump()
+    except AttributeError:
+        req_dict = data.dict()
+        res_dict = response_obj.dict()
+        
+    combined_data = {**req_dict, **res_dict}
+    json_data = json.dumps(combined_data)
+        
+    await manager.broadcast(json_data)
+    
+    return response_obj
 
 # --- GET ROUTES FOR REACT COMPATIBILITY ---
 
