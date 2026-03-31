@@ -60,7 +60,7 @@ npm run dev
 ```
 *Launches the primary end-user payment interface (mobile-view simulation).*
 
-*(Optional) 4️⃣ Terminal: The Live Streamer*
+*(MUST) 4️⃣ Terminal: The Live Streamer*
 ```bash
 cd backend
 python streamer.py
