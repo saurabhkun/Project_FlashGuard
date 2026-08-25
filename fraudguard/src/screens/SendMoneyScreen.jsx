@@ -48,12 +48,47 @@ const SendMoneyScreen = ({setScreen,setAnalysisResult,setCurrentTxn}) => {
   };
 
   const proceed = () => {
-    const d={sender:"Arjun Mehta",receiver,amount:parseFloat(amount),location:loc,merchantCategory:"TRANSFER",
-             deviceScore:72,ipRiskScore:20,accountTrust:75,behaviorScore:68,failedLoginAttempts:0,txnCount:2};
-    const r=fraudEngine(d);
-    setAnalysisResult(r);
-    setCurrentTxn({...d,...r,id:"T"+Date.now(),time:"Just now",status:r.recommendation==="BLOCK"?"Fraud":"Suspicious",icon:"💸"});
-    setScreen("fraudAnalysis");
+    if (warn) {
+      setAnalysisResult(warn);
+      setCurrentTxn({
+        sender: "Arjun Mehta",
+        receiver,
+        amount: parseFloat(amount),
+        location: loc,
+        ...warn,
+        id: warn.transactionId || ("T" + Date.now()),
+        time: "Just now",
+        status: warn.recommendation === "BLOCK" ? "Fraud" : warn.recommendation === "REVIEW" ? "Suspicious" : "Safe",
+        icon: "💸"
+      });
+      setScreen("fraudAnalysis");
+    } else {
+      const d = {
+        sender: "Arjun Mehta",
+        receiver,
+        amount: parseFloat(amount),
+        location: loc,
+        merchantCategory: "TRANSFER",
+        deviceScore: 72,
+        ipRiskScore: 20,
+        accountTrust: 75,
+        behaviorScore: 68,
+        failedLoginAttempts: 0,
+        txnCount: 2,
+        nameOrig: "USER001",
+        nameDest: receiver,
+        oldbalanceOrg: 50000,
+        newbalanceOrig: 50000 - parseFloat(amount),
+        oldbalanceDest: 10000,
+        newbalanceDest: 10000 + parseFloat(amount),
+        type: "TRANSFER"
+      };
+      checkTransaction(d).then(r => {
+        setAnalysisResult(r);
+        setCurrentTxn({ ...d, ...r, id: "T" + Date.now(), time: "Just now", status: r.recommendation === "BLOCK" ? "Fraud" : r.recommendation === "REVIEW" ? "Suspicious" : "Safe", icon: "💸" });
+        setScreen("fraudAnalysis");
+      });
+    }
   };
 
   return (

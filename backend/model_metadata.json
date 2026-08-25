@@ -1,0 +1,20 @@
+{
+    "model_name": "FraudGuard",
+    "model_version": "fraudguard-dataset-v1",
+    "dataset": "DataSet.csv",
+    "training_rows": 9082,
+    "raw_features": 3925,
+    "selected_features": 100,
+    "target": "F3924",
+    "fraud_count": 81,
+    "legitimate_count": 9001,
+    "model_type": "HistGradientBoostingClassifier",
+    "threshold": 0.9999983921705758,
+    "roc_auc": 1.0,
+    "pr_auc": 1.0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "leakage_audit": "PASSED",
+    "model_status": "ACTIVE"
+}

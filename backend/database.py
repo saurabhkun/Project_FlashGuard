@@ -72,7 +72,7 @@ def init_db():
     
     conn.commit()
     conn.close()
-    print(f"✅ Database initialized at: {DB_PATH}")
+    print(f"[OK] Database initialized at: {DB_PATH}")
 
 def get_connection():
     """Get a database connection"""
@@ -128,10 +128,10 @@ def log_transaction(data, status, risk_score=0, level="LOW", reasons=None, times
         ))
         
         conn.commit()
-        print(f"💾 DB Log: Transaction {transaction_id} saved. Status: {status}")
+        print(f"[DB] Transaction {transaction_id} saved. Status: {status}")
         
     except sqlite3.Error as e:
-        print(f"❌ Database error: {e}")
+        print(f"[DB ERROR] Database error: {e}")
         conn.rollback()
     finally:
         conn.close()

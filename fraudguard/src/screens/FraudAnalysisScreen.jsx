@@ -21,8 +21,9 @@ const FraudAnalysisScreen = ({result,setScreen}) => {
   if(!result) return null;
   const {fraudProbability:fp,recommendation:rec,riskLevel:rl,reasons} = result;
   const color = riskColor(fp);
-  const recMsg = rec==="ALLOW"?"✅ Looks good — approved!":rec==="REVIEW"?"⚠️ Needs a closer look":rec==="BLOCK"?"🚫 We stopped this for you":"";
-  const recSub = rec==="ALLOW"?"Your transaction passed all security checks.":rec==="REVIEW"?"We flagged a few things. Please verify before proceeding.":"We blocked this to keep your money safe.";
+  const isApproved = rec === "ALLOW" || rec === "ACCEPT";
+  const recMsg = isApproved ? "✅ Looks good — approved!" : rec === "REVIEW" ? "⚠️ Needs a closer look" : rec === "BLOCK" ? "🚫 We stopped this for you" : "";
+  const recSub = isApproved ? "Your transaction passed all security checks." : rec === "REVIEW" ? "We flagged a few things. Please verify before proceeding." : "We blocked this to keep your money safe.";
 
   return (
     <div className="up" style={{flex:1,overflowY:"auto",paddingBottom:16}}>
