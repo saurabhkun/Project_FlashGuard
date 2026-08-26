@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../models/transaction_model.dart';
-import '../services/biometric_service.dart';
-import 'send_money_screen.dart';
-import 'qr_scanner_screen.dart';
-import 'security_center_screen.dart';
-import 'fraud_analytics_screen.dart';
+import 'package:fraudguard_flutter/models/transaction_model.dart';
+import 'package:fraudguard_flutter/services/biometric_service.dart';
+import 'package:fraudguard_flutter/screens/send_money_screen.dart';
+import 'package:fraudguard_flutter/screens/qr_scanner_screen.dart';
+import 'package:fraudguard_flutter/screens/security_center_screen.dart';
+import 'package:fraudguard_flutter/screens/fraud_analytics_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -304,7 +304,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
           Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
+            crossAxisAlignment: CrossAlignment.end,
             children: [
               Text('?${item.amount.toStringAsFixed(0)}', style: GoogleFonts.inter(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
