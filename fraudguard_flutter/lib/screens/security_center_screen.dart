@@ -53,7 +53,7 @@ class _SecurityCenterScreenState extends State<SecurityCenterScreen> {
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
         child: Column(
-          crossAxisAlignment: CrossAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Banner Card
             Container(
@@ -156,7 +156,7 @@ class _SecurityCenterScreenState extends State<SecurityCenterScreen> {
           const SizedBox(width: 14),
           Expanded(
             child: Column(
-              crossAxisAlignment: CrossAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(title, style: GoogleFonts.inter(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 2),

@@ -1,4 +1,4 @@
-import 'package:flutter/material';
+import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class FraudAnalyticsScreen extends StatelessWidget {
@@ -20,7 +20,7 @@ class FraudAnalyticsScreen extends StatelessWidget {
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
         child: Column(
-          crossAxisAlignment: CrossAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Model Summary Header
             Container(
@@ -32,7 +32,7 @@ class FraudAnalyticsScreen extends StatelessWidget {
                 border: Border.all(color: const Color(0xFF00F2FE)),
               ),
               child: Column(
-                crossAxisAlignment: CrossAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -102,7 +102,7 @@ class FraudAnalyticsScreen extends StatelessWidget {
         border: Border.all(color: const Color(0xFF334155)),
       ),
       child: Column(
-        crossAxisAlignment: CrossAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(title, style: GoogleFonts.inter(color: const Color(0xFF94A3B8), fontSize: 12)),
           const SizedBox(height: 8),
@@ -124,7 +124,7 @@ class FraudAnalyticsScreen extends StatelessWidget {
         border: Border.all(color: const Color(0xFF334155)),
       ),
       child: Column(
-        crossAxisAlignment: CrossAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,

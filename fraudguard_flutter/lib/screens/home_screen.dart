@@ -1,4 +1,4 @@
-import 'package:flutter/material';
+import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -50,14 +50,14 @@ class _HomeScreenState extends State<HomeScreen> {
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20.0),
           child: Column(
-            crossAxisAlignment: CrossAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Header Row
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Column(
-                    crossAxisAlignment: CrossAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         'Welcome back ??',
@@ -113,7 +113,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
                 child: Column(
-                  crossAxisAlignment: CrossAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('Available Balance', style: GoogleFonts.inter(color: const Color(0xFF94A3B8), fontSize: 13)),
                     const SizedBox(height: 8),
@@ -294,7 +294,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(width: 14),
               Column(
-                crossAxisAlignment: CrossAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(item.title, style: GoogleFonts.inter(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 2),
@@ -304,7 +304,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
           Column(
-            crossAxisAlignment: CrossAlignment.end,
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text('?${item.amount.toStringAsFixed(0)}', style: GoogleFonts.inter(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
