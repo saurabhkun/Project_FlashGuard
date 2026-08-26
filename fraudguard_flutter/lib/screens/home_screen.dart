@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import 'package:fraudguard_flutter/models/transaction_model.dart';
-import 'package:fraudguard_flutter/services/biometric_service.dart';
-import 'package:fraudguard_flutter/screens/send_money_screen.dart';
-import 'package:fraudguard_flutter/screens/qr_scanner_screen.dart';
-import 'package:fraudguard_flutter/screens/security_center_screen.dart';
-import 'package:fraudguard_flutter/screens/fraud_analytics_screen.dart';
+import '../models/transaction_model.dart';
+import '../services/biometric_service.dart';
+import 'send_money_screen.dart';
+import 'qr_scanner_screen.dart';
+import 'security_center_screen.dart';
+import 'fraud_analytics_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -17,7 +17,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  double _balance = 48500.00;
+  final double _balance = 48500.00;
   Map<String, dynamic> _biometricStatus = {};
 
   final List<TransactionItem> _recentTransactions = [
@@ -109,11 +109,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(color: const Color(0xFF334155)),
                   boxShadow: [
-                    BoxShadow(color: const Color(0xFF00F2FE).withOpacity(0.08), blurRadius: 16, offset: const Offset(0, 4)),
+                    BoxShadow(color: const Color(0xFF00F2FE).withValues(alpha: 0.08), blurRadius: 16, offset: const Offset(0, 4)),
                   ],
                 ),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAlignment.start,
                   children: [
                     Text('Available Balance', style: GoogleFonts.inter(color: const Color(0xFF94A3B8), fontSize: 13)),
                     const SizedBox(height: 8),
@@ -128,7 +128,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF00F2FE).withOpacity(0.12),
+                            color: const Color(0xFF00F2FE).withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Row(
@@ -240,7 +240,7 @@ class _HomeScreenState extends State<HomeScreen> {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: color.withOpacity(0.15),
+                color: color.withValues(alpha: 0.15),
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, color: color, size: 20),
@@ -260,13 +260,13 @@ class _HomeScreenState extends State<HomeScreen> {
     Color tagBg;
     Color tagText;
     if (item.status == 'SAFE') {
-      tagBg = const Color(0xFF22C55E).withOpacity(0.15);
+      tagBg = const Color(0xFF22C55E).withValues(alpha: 0.15);
       tagText = const Color(0xFF22C55E);
     } else if (item.status == 'SUSPICIOUS') {
-      tagBg = const Color(0xFFEAB308).withOpacity(0.15);
+      tagBg = const Color(0xFFEAB308).withValues(alpha: 0.15);
       tagText = const Color(0xFFEAB308);
     } else {
-      tagBg = const Color(0xFFEF4444).withOpacity(0.15);
+      tagBg = const Color(0xFFEF4444).withValues(alpha: 0.15);
       tagText = const Color(0xFFEF4444);
     }
 

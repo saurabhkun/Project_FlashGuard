@@ -40,7 +40,7 @@ class FraudAnalyticsScreen extends StatelessWidget {
                       Text('Active Model Engine', style: GoogleFonts.inter(color: const Color(0xFF94A3B8), fontSize: 13)),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(color: const Color(0xFF00F2FE).withOpacity(0.15), borderRadius: BorderRadius.circular(6)),
+                        decoration: BoxDecoration(color: const Color(0xFF00F2FE).withValues(alpha: 0.15), borderRadius: BorderRadius.circular(6)),
                         child: Text('v1.0.0', style: GoogleFonts.inter(color: const Color(0xFF00F2FE), fontSize: 11, fontWeight: FontWeight.bold)),
                       ),
                     ],

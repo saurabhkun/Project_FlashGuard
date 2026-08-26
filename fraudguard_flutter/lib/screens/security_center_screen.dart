@@ -156,7 +156,7 @@ class _SecurityCenterScreenState extends State<SecurityCenterScreen> {
           const SizedBox(width: 14),
           Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAlignment.start,
               children: [
                 Text(title, style: GoogleFonts.inter(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 2),
@@ -167,7 +167,7 @@ class _SecurityCenterScreenState extends State<SecurityCenterScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: badgeColor.withOpacity(0.15),
+              color: badgeColor.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(badgeText, style: GoogleFonts.inter(color: badgeColor, fontSize: 10, fontWeight: FontWeight.bold)),
