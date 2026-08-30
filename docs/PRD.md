@@ -6,13 +6,14 @@
 
 **FlashGuard Pro** is a real-time, high-performance financial surveillance and fraud prevention system engineered specifically for India's rapidly growing digital payments ecosystem (UPI, IMPS, RTGS, mobile wallets).
 
-By pairing an advanced Machine Learning classifier (`FraudGuard` `HistGradientBoostingClassifier`) with an **11-Layer Heuristic Security Engine**, FlashGuard Pro evaluates payment requests in **sub-30ms latency**, blocking fraudulent fund transfers *before* transactions settle.
+By pairing an advanced Machine Learning classifier (`FraudGuard` `HistGradientBoostingClassifier`) trained on the **Bank of India Hackathon Selection Round Dataset (IIT Hyderabad)** with an **11-Layer Heuristic Security Engine**, FlashGuard Pro evaluates payment requests in **sub-30ms latency**, blocking fraudulent fund transfers *before* transactions settle.
 
 ---
 
 ## 2. Problem Statement & Market Context
 
 - **India Cyber Crime Loss**: Indian citizens lost **₹22,495+ Crore to digital fraud in 2025**, representing a 24% year-over-year escalation.
+- **Dataset Provenance**: Dataset (`DataSet.csv`) was officially provided by **Bank of India** during the selection round of their Hackathon hosted at **IIT Hyderabad (IIT Hyd)**. It contains 9,082 rows and 3,925 raw feature dimensions.
 - **Prevalent Fraud Vectors**:
   1. **Digital Arrest & Extortion Scams**: Impersonation of law enforcement demanding urgent UPI transfers.
   2. **Account Draining**: Sudden, massive transfers exceeding 75%–90% of user balance.
@@ -26,7 +27,7 @@ By pairing an advanced Machine Learning classifier (`FraudGuard` `HistGradientBo
 
 ### 3.1 Machine Learning Requirements
 - **Model Classifier**: `sklearn.ensemble.HistGradientBoostingClassifier`
-- **Training Dataset**: `DataSet.csv` (9,082 rows x 3,925 raw features).
+- **Training Dataset**: `DataSet.csv` (Bank of India Hackathon @ IIT Hyderabad selection round dataset).
 - **Feature Selection**: Top 100 features selected via training fold importance.
 - **Target Label**: `F3924` (Binary fraud indicator: 0 = Legit, 1 = Fraud).
 - **Leakage Invariant**: Target column `F3912` explicitly excluded from predictor feature set.

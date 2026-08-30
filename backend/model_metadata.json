@@ -2,6 +2,7 @@
     "model_name": "FraudGuard",
     "model_version": "fraudguard-dataset-v1",
     "dataset": "DataSet.csv",
+    "dataset_source": "Bank of India Hackathon Selection Round (IIT Hyderabad)",
     "training_rows": 9082,
     "raw_features": 3925,
     "selected_features": 100,

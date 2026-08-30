@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -10,6 +10,8 @@ void main() {
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: Brightness.light,
+      systemNavigationBarColor: Color(0xFF0B0F19),
+      systemNavigationBarIconBrightness: Brightness.light,
     ),
   );
   runApp(const FlashGuardApp());
@@ -21,7 +23,7 @@ class FlashGuardApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'FlashGuard Pro Mobile',
+      title: 'FlashGuard Pro - Bank of India IIT Hyd Edition',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.dark,
@@ -31,8 +33,9 @@ class FlashGuardApp extends StatelessWidget {
           primary: Color(0xFF00F2FE),
           secondary: Color(0xFF4FACFE),
           surface: Color(0xFF1E293B),
+          error: Color(0xFFEF4444),
         ),
-        textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
+        textTheme: GoogleFonts.plusJakartaSansTextTheme(ThemeData.dark().textTheme),
         useMaterial3: true,
       ),
       home: const HomeScreen(),
