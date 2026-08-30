@@ -1,4 +1,4 @@
-﻿import 'package:flutter/services.dart';
+import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
 
 class BiometricService {
@@ -35,6 +35,11 @@ class BiometricService {
         'error': e.toString(),
       };
     }
+  }
+
+  static Future<bool> authenticate({required String reason}) async {
+    final res = await promptBiometricAuth(reason: reason);
+    return res['success'] == true;
   }
 
   static Future<Map<String, dynamic>> promptBiometricAuth({

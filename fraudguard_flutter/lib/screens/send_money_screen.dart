@@ -1,9 +1,9 @@
 ﻿import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-
 import '../models/transaction_model.dart';
 import '../services/api_service.dart';
 import '../services/biometric_service.dart';
+import '../theme/sealed_ledger_theme.dart';
+import '../widgets/verdict_seal.dart';
 
 class SendMoneyScreen extends StatefulWidget {
   final String? initialRecipient;
@@ -14,12 +14,15 @@ class SendMoneyScreen extends StatefulWidget {
   State<SendMoneyScreen> createState() => _SendMoneyScreenState();
 }
 
-class _SendMoneyScreenState extends State<SendMoneyScreen> {
+class _SendMoneyScreenState extends State<SendMoneyScreen> with SingleTickerProviderStateMixin {
   final TextEditingController _recipientController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
-  String _txnType = 'TRANSFER';
-  bool _loading = false;
+  final String _txnType = 'TRANSFER';
+  bool _certifying = false;
   RiskEvaluationResult? _riskResult;
+
+  late AnimationController _progressController;
+  late Animation<double> _progressAnim;
 
   @override
   void initState() {
@@ -27,57 +30,75 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
     if (widget.initialRecipient != null) {
       _recipientController.text = widget.initialRecipient!;
     }
+
+    _progressController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+    _progressAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _progressController, curve: Curves.easeInOut),
+    );
   }
 
   @override
   void dispose() {
     _recipientController.dispose();
     _amountController.dispose();
+    _progressController.dispose();
     super.dispose();
   }
 
-  Future<void> _handleVerifyAndPay() async {
+  Future<void> _handleCertifyAndSubmit() async {
     final String recipient = _recipientController.text.trim();
     final double? amount = double.tryParse(_amountController.text.trim());
 
     if (recipient.isEmpty || amount == null || amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid recipient and amount')),
+        SnackBar(
+          backgroundColor: SealedLedgerColors.brickRed,
+          content: Text(
+            'Invalid Entry: Please enter a valid recipient UPI handle and amount',
+            style: SealedLedgerTheme.plexMono(fontSize: 12, color: Colors.white),
+          ),
+        ),
       );
       return;
     }
 
     setState(() {
-      _loading = true;
+      _certifying = true;
       _riskResult = null;
     });
 
-    // 1. Send transaction payload + hardware telemetry to FraudGuard FastAPI Backend Engine
+    _progressController.reset();
+    _progressController.forward();
+
+    // 1. Send transaction payload to FraudGuard Backend
     final evalResult = await ApiService.evaluateTransaction(
       amount: amount,
       recipient: recipient,
       type: _txnType,
-      oldBalanceOrg: 50000.0,
+      oldBalanceOrg: 84500.0,
     );
 
-    setState(() {
-      _loading = false;
-      _riskResult = evalResult;
-    });
+    if (mounted) {
+      setState(() {
+        _certifying = false;
+        _riskResult = evalResult;
+      });
 
-    // 2. Evaluate FraudGuard Decision Boundaries
-    if (evalResult.decision == 'BLOCK' || evalResult.level == 'FRAUD') {
-      _showBlockedDialog(evalResult);
-      return;
-    }
-
-    // 3. Check if Step-up Biometric Authentication (Fingerprint / Face ID) is Required
-    bool requireBiometrics = (evalResult.decision == 'REVIEW' || evalResult.riskScore > 25 || amount >= 25000);
-
-    if (requireBiometrics) {
-      _showBiometricStepUpDialog(evalResult, amount, recipient);
-    } else {
-      _showSuccessDialog(evalResult, amount, recipient, 'Auto Approved (Low Risk)');
+      // 2. Evaluate Verdict
+      if (evalResult.decision == 'BLOCK' || evalResult.level == 'FRAUD') {
+        _showVerdictDialog(evalResult, amount, recipient, isBlocked: true);
+      } else {
+        // Check if biometric verification is needed
+        bool requireBiometrics = (evalResult.decision == 'REVIEW' || evalResult.riskScore > 25 || amount >= 25000);
+        if (requireBiometrics) {
+          _showBiometricStepUpDialog(evalResult, amount, recipient);
+        } else {
+          _showVerdictDialog(evalResult, amount, recipient, isBlocked: false);
+        }
+      }
     }
   }
 
@@ -86,13 +107,23 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E293B),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Color(0xFFEAB308))),
+        backgroundColor: SealedLedgerColors.ledgerParchment,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(4),
+          side: const BorderSide(color: SealedLedgerColors.brassGold, width: 1.5),
+        ),
         title: Row(
           children: [
-            const Icon(Icons.security_rounded, color: Color(0xFFEAB308), size: 28),
+            const Icon(Icons.fingerprint, color: SealedLedgerColors.amberOchre, size: 24),
             const SizedBox(width: 10),
-            Text('Biometric Verification', style: GoogleFonts.inter(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(
+              'BIOMETRIC STEP-UP REQUIRED',
+              style: SealedLedgerTheme.plexMono(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: SealedLedgerColors.inkNavyText,
+              ),
+            ),
           ],
         ),
         content: Column(
@@ -100,123 +131,108 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'FraudGuard Risk Score: ${res.riskScore}/100 (${res.level})',
-              style: GoogleFonts.inter(color: const Color(0xFFEAB308), fontSize: 14, fontWeight: FontWeight.bold),
+              'Risk Score ${res.riskScore}/100 requires user biometric confirmation.',
+              style: SealedLedgerTheme.plexSans(fontSize: 13, color: SealedLedgerColors.inkNavyText),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             Text(
-              'Please authenticate using your Phone Fingerprint or Face ID to approve this transfer of ?${amount.toStringAsFixed(0)} to $recipient.',
-              style: GoogleFonts.inter(color: const Color(0xFFCBD5E1), fontSize: 13),
+              'REASONS: ${res.reasons.join(", ")}',
+              style: SealedLedgerTheme.plexMono(fontSize: 11, color: SealedLedgerColors.amberOchre),
             ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('Cancel', style: GoogleFonts.inter(color: const Color(0xFF94A3B8))),
+            child: Text('CANCEL', style: SealedLedgerTheme.plexMono(color: SealedLedgerColors.brickRed)),
           ),
-          ElevatedButton.icon(
+          ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF00F2FE),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              backgroundColor: SealedLedgerColors.inkNavy,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
             ),
-            icon: const Icon(Icons.fingerprint, color: Color(0xFF0B0F19)),
-            label: Text('Scan Fingerprint', style: GoogleFonts.inter(color: const Color(0xFF0B0F19), fontWeight: FontWeight.bold)),
             onPressed: () async {
               Navigator.pop(ctx);
-              final bioResult = await BiometricService.promptBiometricAuth(
-                reason: 'Authorize ?${amount.toStringAsFixed(0)} transfer to $recipient',
+              final authSuccess = await BiometricService.authenticate(
+                reason: 'Confirm transaction of Rs. $amount to $recipient',
               );
-
-              if (bioResult['success'] == true) {
-                _showSuccessDialog(res, amount, recipient, bioResult['method'] ?? 'Fingerprint');
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    backgroundColor: const Color(0xFFEF4444),
-                    content: Text(bioResult['error'] ?? 'Biometric verification failed.'),
-                  ),
-                );
+              if (mounted) {
+                if (authSuccess) {
+                  _showVerdictDialog(res, amount, recipient, isBlocked: false);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      backgroundColor: SealedLedgerColors.brickRed,
+                      content: Text('Biometric Authentication Failed', style: SealedLedgerTheme.plexMono(color: Colors.white)),
+                    ),
+                  );
+                }
               }
             },
+            child: Text('AUTHENTICATE', style: SealedLedgerTheme.plexMono(color: SealedLedgerColors.warmOffWhite)),
           ),
         ],
       ),
     );
   }
 
-  void _showBlockedDialog(RiskEvaluationResult res) {
+  void _showVerdictDialog(RiskEvaluationResult res, double amount, String recipient, {required bool isBlocked}) {
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E293B),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Color(0xFFEF4444))),
-        title: Row(
-          children: [
-            const Icon(Icons.block_rounded, color: Color(0xFFEF4444), size: 28),
-            const SizedBox(width: 10),
-            Text('Transaction Blocked', style: GoogleFonts.inter(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-          ],
+        backgroundColor: SealedLedgerColors.ledgerParchment,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(4),
+          side: const BorderSide(color: SealedLedgerColors.brassGold, width: 1.5),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const SizedBox(height: 10),
+            // Stamp Animation
+            VerdictSeal.fromStatus(res.level, size: 100.0, animate: true),
+            const SizedBox(height: 16),
             Text(
-              'FraudGuard AI Score: ${res.riskScore}/100 (HIGH RISK)',
-              style: GoogleFonts.inter(color: const Color(0xFFEF4444), fontSize: 14, fontWeight: FontWeight.bold),
+              isBlocked ? 'TRANSACTION TERMINATED' : 'TRANSACTION CERTIFIED',
+              style: SealedLedgerTheme.frauncesHeader(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: isBlocked ? SealedLedgerColors.brickRed : SealedLedgerColors.mossGreen,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Rs. ${amount.toStringAsFixed(2)} to $recipient',
+              style: SealedLedgerTheme.plexMono(fontSize: 14, fontWeight: FontWeight.bold, color: SealedLedgerColors.inkNavyText),
             ),
             const SizedBox(height: 12),
-            Text('Reasons for Real-Time Block:', style: GoogleFonts.inter(color: const Color(0xFFCBD5E1), fontSize: 12, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 6),
-            ...res.reasons.map((r) => Text('• $r', style: GoogleFonts.inter(color: const Color(0xFF94A3B8), fontSize: 12))),
+            Text(
+              'RISK SCORE: ${res.riskScore} / 100',
+              style: SealedLedgerTheme.plexMono(fontSize: 12, fontWeight: FontWeight.bold, color: SealedLedgerColors.brassGold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              res.reasons.join('\n'),
+              style: SealedLedgerTheme.plexMono(fontSize: 11, color: SealedLedgerColors.parchmentMuted),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: SealedLedgerColors.inkNavy,
+                minimumSize: const Size(double.infinity, 44),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+              ),
+              onPressed: () {
+                Navigator.pop(ctx);
+                Navigator.pop(context);
+              },
+              child: Text('CLOSE LEDGER ENTRY', style: SealedLedgerTheme.plexMono(color: SealedLedgerColors.warmOffWhite)),
+            ),
           ],
         ),
-        actions: [
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('Close', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showSuccessDialog(RiskEvaluationResult res, double amount, String recipient, String authMethod) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E293B),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Color(0xFF22C55E))),
-        title: Row(
-          children: [
-            const Icon(Icons.check_circle_rounded, color: Color(0xFF22C55E), size: 28),
-            const SizedBox(width: 10),
-            Text('Payment Approved', style: GoogleFonts.inter(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Amount: ?${amount.toStringAsFixed(2)}', style: GoogleFonts.inter(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
-            Text('Recipient: $recipient', style: GoogleFonts.inter(color: const Color(0xFF94A3B8), fontSize: 13)),
-            const SizedBox(height: 10),
-            Text('Security Check: $authMethod', style: GoogleFonts.inter(color: const Color(0xFF00F2FE), fontSize: 12, fontWeight: FontWeight.w600)),
-            Text('FraudGuard Risk: ${res.riskScore}/100 (${res.level})', style: GoogleFonts.inter(color: const Color(0xFF22C55E), fontSize: 12)),
-          ],
-        ),
-        actions: [
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF22C55E)),
-            onPressed: () {
-              Navigator.pop(ctx);
-              Navigator.pop(context);
-            },
-            child: Text('Done', style: GoogleFonts.inter(color: Colors.black, fontWeight: FontWeight.bold)),
-          ),
-        ],
       ),
     );
   }
@@ -224,152 +240,128 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0B0F19),
+      backgroundColor: SealedLedgerColors.inkNavy,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0B0F19),
+        backgroundColor: SealedLedgerColors.inkNavy,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+          icon: const Icon(Icons.arrow_back, color: SealedLedgerColors.warmOffWhite),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Send Money', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: Text(
+          'NEW LEDGER ENTRY',
+          style: SealedLedgerTheme.plexMono(
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+            color: SealedLedgerColors.brassGold,
+          ),
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Card Input
+            // Parchment Form Sheet
             Container(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(22),
               decoration: BoxDecoration(
-                color: const Color(0xFF1E293B),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFF334155)),
+                color: SealedLedgerColors.ledgerParchment,
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: SealedLedgerColors.brassGold, width: 1.5),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Recipient Name / UPI ID', style: GoogleFonts.inter(color: const Color(0xFF94A3B8), fontSize: 13, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 8),
+                  Text(
+                    'PAYMENT SPECIFICATION',
+                    style: SealedLedgerTheme.plexMono(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: SealedLedgerColors.brassGold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Recipient Field
+                  Text('Recipient UPI Handle', style: SealedLedgerTheme.plexSans(fontSize: 12, color: SealedLedgerColors.inkNavyText)),
+                  const SizedBox(height: 6),
                   TextField(
                     controller: _recipientController,
-                    style: GoogleFonts.inter(color: Colors.white, fontSize: 15),
+                    style: SealedLedgerTheme.plexMono(color: SealedLedgerColors.inkNavyText),
                     decoration: InputDecoration(
-                      hintText: 'e.g. rahul@upi or STORE_ELECTRONICS',
-                      hintStyle: GoogleFonts.inter(color: const Color(0xFF64748B)),
+                      hintText: 'e.g. merchant@upi or M999_SUSPICIOUS',
+                      hintStyle: SealedLedgerTheme.plexMono(fontSize: 12, color: SealedLedgerColors.parchmentMuted),
                       filled: true,
-                      fillColor: const Color(0xFF0F172A),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF334155))),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(4), borderSide: const BorderSide(color: SealedLedgerColors.brassGold)),
                     ),
                   ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 18),
 
-                  Text('Amount (?)', style: GoogleFonts.inter(color: const Color(0xFF94A3B8), fontSize: 13, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 8),
+                  // Amount Field
+                  Text('Amount (INR)', style: SealedLedgerTheme.plexSans(fontSize: 12, color: SealedLedgerColors.inkNavyText)),
+                  const SizedBox(height: 6),
                   TextField(
                     controller: _amountController,
                     keyboardType: TextInputType.number,
-                    style: GoogleFonts.inter(color: const Color(0xFF00F2FE), fontSize: 24, fontWeight: FontWeight.bold),
+                    style: SealedLedgerTheme.plexMono(fontSize: 18, fontWeight: FontWeight.bold, color: SealedLedgerColors.inkNavyText),
                     decoration: InputDecoration(
+                      prefixText: 'Rs. ',
+                      prefixStyle: SealedLedgerTheme.plexMono(fontSize: 18, fontWeight: FontWeight.bold, color: SealedLedgerColors.brassGold),
                       hintText: '0.00',
-                      hintStyle: GoogleFonts.inter(color: const Color(0xFF64748B)),
+                      hintStyle: SealedLedgerTheme.plexMono(fontSize: 18, color: SealedLedgerColors.parchmentMuted),
                       filled: true,
-                      fillColor: const Color(0xFF0F172A),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF334155))),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(4), borderSide: const BorderSide(color: SealedLedgerColors.brassGold)),
                     ),
                   ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 24),
 
-                  // Quick Amounts Row
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: ['500', '1000', '5000', '50000', '100000'].map((amt) {
-                      return InkWell(
-                        onTap: () => setState(() => _amountController.text = amt),
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF334155),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text('+?$amt', style: GoogleFonts.inter(color: const Color(0xFFCBD5E1), fontSize: 11, fontWeight: FontWeight.w600)),
-                        ),
-                      );
-                    }).toList(),
+                  // Progress / Certifying State
+                  if (_certifying) ...[
+                    Text(
+                      'CERTIFYING TRANSACTION WITH FRAUDGUARD ML...',
+                      style: SealedLedgerTheme.plexMono(fontSize: 10, fontWeight: FontWeight.bold, color: SealedLedgerColors.brassGold),
+                    ),
+                    const SizedBox(height: 8),
+                    // Thin brass line filling left-to-right
+                    AnimatedBuilder(
+                      animation: _progressAnim,
+                      builder: (context, child) {
+                        return LinearProgressIndicator(
+                          value: _progressAnim.value,
+                          minHeight: 3,
+                          backgroundColor: SealedLedgerColors.brassGold.withValues(alpha: 0.2),
+                          valueColor: const AlwaysStoppedAnimation<Color>(SealedLedgerColors.brassGold),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // Submit Action Button
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: SealedLedgerColors.inkNavy,
+                      minimumSize: const Size(double.infinity, 48),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
+                        side: const BorderSide(color: SealedLedgerColors.brassGold, width: 1.2),
+                      ),
+                    ),
+                    onPressed: _certifying ? null : _handleCertifyAndSubmit,
+                    child: Text(
+                      'CERTIFY & EXECUTE PAYMENT',
+                      style: SealedLedgerTheme.plexMono(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: SealedLedgerColors.warmOffWhite,
+                      ),
+                    ),
                   ),
                 ],
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            // Live Risk Card Preview if evaluated
-            if (_riskResult != null)
-              Container(
-                margin: const EdgeInsets.only(bottom: 20),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1E293B),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: _riskResult!.level == 'SAFE'
-                        ? const Color(0xFF22C55E)
-                        : (_riskResult!.level == 'SUSPICIOUS' ? const Color(0xFFEAB308) : const Color(0xFFEF4444)),
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          _riskResult!.level == 'SAFE' ? Icons.shield_outlined : Icons.warning_amber_rounded,
-                          color: _riskResult!.level == 'SAFE'
-                              ? const Color(0xFF22C55E)
-                              : (_riskResult!.level == 'SUSPICIOUS' ? const Color(0xFFEAB308) : const Color(0xFFEF4444)),
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        Text('FraudGuard AI Evaluation', style: GoogleFonts.inter(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Score: ${_riskResult!.riskScore}/100 | Status: ${_riskResult!.level} (${_riskResult!.decision})',
-                      style: GoogleFonts.inter(color: const Color(0xFFCBD5E1), fontSize: 13, fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 6),
-                    ..._riskResult!.reasons.map((r) => Text('• $r', style: GoogleFonts.inter(color: const Color(0xFF94A3B8), fontSize: 12))),
-                  ],
-                ),
-              ),
-
-            // Action Pay Button
-            SizedBox(
-              width: double.infinity,
-              height: 54,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF00F2FE),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                ),
-                onPressed: _loading ? null : _handleVerifyAndPay,
-                child: _loading
-                    ? const CircularProgressIndicator(color: Colors.black)
-                    : Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.fingerprint, color: Color(0xFF0B0F19), size: 22),
-                          const SizedBox(width: 8),
-                          Text('Analyze & Pay Safely', style: GoogleFonts.inter(color: const Color(0xFF0B0F19), fontSize: 16, fontWeight: FontWeight.bold)),
-                        ],
-                      ),
               ),
             ),
           ],

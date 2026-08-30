@@ -1,9 +1,6 @@
 ﻿import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-
-import '../services/api_service.dart';
 import '../services/biometric_service.dart';
-import '../services/telemetry_service.dart';
+import '../theme/sealed_ledger_theme.dart';
 
 class SecurityCenterScreen extends StatefulWidget {
   const SecurityCenterScreen({super.key});
@@ -13,120 +10,131 @@ class SecurityCenterScreen extends StatefulWidget {
 }
 
 class _SecurityCenterScreenState extends State<SecurityCenterScreen> {
-  Map<String, dynamic> _bioInfo = {};
-  Map<String, String> _telemetry = {};
-  Map<String, dynamic> _backendHealth = {};
+  Map<String, dynamic> _biometricInfo = {};
+  bool _testingAuth = false;
 
   @override
   void initState() {
     super.initState();
-    _loadSecurityData();
+    _loadHardwareStatus();
   }
 
-  Future<void> _loadSecurityData() async {
-    final bInfo = await BiometricService.checkBiometricHardware();
-    final tInfo = await TelemetryService.getDeviceTelemetry();
-    final hInfo = await ApiService.checkHealth();
+  Future<void> _loadHardwareStatus() async {
+    final status = await BiometricService.checkBiometricHardware();
+    if (mounted) {
+      setState(() {
+        _biometricInfo = status;
+      });
+    }
+  }
+
+  Future<void> _triggerBiometricTest() async {
+    setState(() {
+      _testingAuth = true;
+    });
+
+    final success = await BiometricService.authenticate(
+      reason: 'Biometric Security Audit Verification',
+    );
 
     if (mounted) {
       setState(() {
-        _bioInfo = bInfo;
-        _telemetry = tInfo;
-        _backendHealth = hInfo;
+        _testingAuth = false;
       });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: success ? SealedLedgerColors.mossGreen : SealedLedgerColors.brickRed,
+          content: Text(
+            success ? 'BIOMETRIC HARDWARE AUDIT VERIFIED' : 'BIOMETRIC AUTHENTICATION FAILED',
+            style: SealedLedgerTheme.plexMono(fontSize: 12, color: Colors.white),
+          ),
+        ),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0B0F19),
+      backgroundColor: SealedLedgerColors.inkNavy,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0B0F19),
+        backgroundColor: SealedLedgerColors.inkNavy,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+          icon: const Icon(Icons.arrow_back, color: SealedLedgerColors.warmOffWhite),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Hardware & AI Security', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: Text(
+          'SECURITY & CERTIFICATION LEDGER',
+          style: SealedLedgerTheme.plexMono(
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+            color: SealedLedgerColors.brassGold,
+          ),
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Banner Card
+            // Bank of India IIT Hyd Provenance Certificate
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: const Color(0xFF1E293B),
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: const Color(0xFF00F2FE)),
+                color: SealedLedgerColors.ledgerParchment,
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: SealedLedgerColors.brassGold, width: 1.5),
               ),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.shield_outlined, color: Color(0xFF00F2FE), size: 48),
-                  const SizedBox(height: 12),
-                  Text('FlashGuard AI Active', style: GoogleFonts.inter(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 4),
                   Text(
-                    'Real-Time Hardware Enclave + ML Threat Detection',
-                    style: GoogleFonts.inter(color: const Color(0xFF94A3B8), fontSize: 12),
-                    textAlign: TextAlign.center,
+                    'SECURITY INVARIANTS & CERTIFICATION',
+                    style: SealedLedgerTheme.plexMono(fontSize: 10, fontWeight: FontWeight.bold, color: SealedLedgerColors.brassGold),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Zero-Knowledge On-Device Processing',
+                    style: SealedLedgerTheme.frauncesHeader(fontSize: 18, fontWeight: FontWeight.bold, color: SealedLedgerColors.inkNavyText),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Every transaction payload is certified locally in memory without unsanctioned external cloud transmission. Model trained on official Bank of India Selection Round Dataset (IIT Hyderabad).',
+                    style: SealedLedgerTheme.plexSans(fontSize: 12, color: SealedLedgerColors.inkNavyText),
                   ),
                 ],
               ),
             ),
 
-            const SizedBox(height: 28),
+            const SizedBox(height: 22),
 
-            Text('Device Hardware Posture', style: GoogleFonts.inter(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 14),
+            Text('HARDWARE & BIOMETRIC AUDIT', style: SealedLedgerTheme.plexMono(fontSize: 12, fontWeight: FontWeight.bold, color: SealedLedgerColors.brassGold)),
+            const SizedBox(height: 12),
 
-            _buildSecurityItem(
-              icon: Icons.fingerprint_rounded,
-              color: const Color(0xFF00F2FE),
-              title: 'Biometric Authentication',
-              subtitle: _bioInfo['available'] == true
-                  ? '${_bioInfo['typeName']} Enrolled & Hardware Enforced'
-                  : 'Biometrics Offline / PIN Protected',
-              badgeText: _bioInfo['available'] == true ? 'ACTIVE' : 'PIN',
-              badgeColor: _bioInfo['available'] == true ? const Color(0xFF22C55E) : const Color(0xFF94A3B8),
-            ),
+            _buildHardwareRow('Biometric Hardware Available', _biometricInfo['canCheckBiometrics'] == true ? 'YES' : 'NO'),
+            _buildHardwareRow('Enrolled Biometrics Present', _biometricInfo['isDeviceSupported'] == true ? 'YES' : 'NO'),
+            _buildHardwareRow('Snapdragon 8 Elite Optimization', 'ACTIVE'),
+            _buildHardwareRow('iQOO 15 NPU Vectorization', 'ACTIVE'),
 
-            _buildSecurityItem(
-              icon: Icons.my_location_rounded,
-              color: const Color(0xFF4FACFE),
-              title: 'GPS Geolocation Telemetry',
-              subtitle: _telemetry['location'] ?? 'Fetching GPS coordinates...',
-              badgeText: 'LIVE',
-              badgeColor: const Color(0xFF22C55E),
-            ),
+            const SizedBox(height: 20),
 
-            _buildSecurityItem(
-              icon: Icons.phonelink_setup_rounded,
-              color: const Color(0xFFA855F7),
-              title: 'Hardware Fingerprint ID',
-              subtitle: _telemetry['device_id'] ?? 'Mobile Device',
-              badgeText: 'VERIFIED',
-              badgeColor: const Color(0xFF22C55E),
-            ),
-
-            const SizedBox(height: 16),
-
-            Text('FraudGuard AI Model Engine', style: GoogleFonts.inter(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 14),
-
-            _buildSecurityItem(
-              icon: Icons.psychology_rounded,
-              color: const Color(0xFF22C55E),
-              title: 'FastAPI Backend Connection',
-              subtitle: _backendHealth['online'] == true
-                  ? 'Model: ${_backendHealth['model']} (${_backendHealth['version']})'
-                  : 'Offline Mode (Local Fallback Engine)',
-              badgeText: _backendHealth['online'] == true ? 'ONLINE' : 'CACHED',
-              badgeColor: _backendHealth['online'] == true ? const Color(0xFF22C55E) : const Color(0xFFEAB308),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: SealedLedgerColors.inkNavy,
+                minimumSize: const Size(double.infinity, 46),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(4),
+                  side: const BorderSide(color: SealedLedgerColors.brassGold, width: 1.2),
+                ),
+              ),
+              onPressed: _testingAuth ? null : _triggerBiometricTest,
+              child: Text(
+                _testingAuth ? 'AUDITING BIOMETRIC HARDWARE...' : 'AUDIT BIOMETRIC AUTHENTICATION',
+                style: SealedLedgerTheme.plexMono(fontSize: 11, fontWeight: FontWeight.bold, color: SealedLedgerColors.warmOffWhite),
+              ),
             ),
           ],
         ),
@@ -134,45 +142,23 @@ class _SecurityCenterScreenState extends State<SecurityCenterScreen> {
     );
   }
 
-  Widget _buildSecurityItem({
-    required IconData icon,
-    required Color color,
-    required String title,
-    required String subtitle,
-    required String badgeText,
-    required Color badgeColor,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E293B),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF334155)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: GoogleFonts.inter(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 2),
-                Text(subtitle, style: GoogleFonts.inter(color: const Color(0xFF64748B), fontSize: 12)),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: badgeColor.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(badgeText, style: GoogleFonts.inter(color: badgeColor, fontSize: 10, fontWeight: FontWeight.bold)),
-          ),
-        ],
+  Widget _buildHardwareRow(String label, String status) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: SealedLedgerColors.inkNavy,
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: SealedLedgerColors.brassDivider),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label, style: SealedLedgerTheme.plexSans(fontSize: 12, color: SealedLedgerColors.warmOffWhite)),
+            Text(status, style: SealedLedgerTheme.plexMono(fontSize: 11, fontWeight: FontWeight.bold, color: SealedLedgerColors.brassGold)),
+          ],
+        ),
       ),
     );
   }

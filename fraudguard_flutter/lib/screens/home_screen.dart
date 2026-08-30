@@ -1,13 +1,12 @@
 ﻿import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import 'package:google_fonts/google_fonts.dart';
-
 import '../models/transaction_model.dart';
-import '../services/biometric_service.dart';
+import '../theme/sealed_ledger_theme.dart';
+import '../widgets/verdict_seal.dart';
 import 'send_money_screen.dart';
 import 'qr_scanner_screen.dart';
 import 'security_center_screen.dart';
 import 'fraud_analytics_screen.dart';
+import 'transaction_detail_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -16,9 +15,11 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
   final double _balance = 84500.00;
-  Map<String, dynamic> _biometricStatus = {};
+  late AnimationController _pulseController;
+  late Animation<double> _pulseScaleAnim;
+  late Animation<double> _pulseOpacityAnim;
 
   final List<TransactionItem> _recentTransactions = [
     TransactionItem(
@@ -62,90 +63,96 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _loadBiometricStatus();
+    // Ambient slow pulse (~2s cycle, subtle scale + opacity only, no glow)
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    )..repeat(reverse: true);
+
+    _pulseScaleAnim = Tween<double>(begin: 0.85, end: 1.15).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+
+    _pulseOpacityAnim = Tween<double>(begin: 0.45, end: 0.95).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
   }
 
-  Future<void> _loadBiometricStatus() async {
-    final status = await BiometricService.checkBiometricHardware();
-    if (mounted) {
-      setState(() {
-        _biometricStatus = status;
-      });
-    }
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0B0F19),
+      backgroundColor: SealedLedgerColors.inkNavy,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildTopBar(),
-              const SizedBox(height: 20),
-              _buildBOIHackathonBadge(),
+              // Top Bar & Live Monitoring Pulse
+              _buildHeader(),
               const SizedBox(height: 18),
+
+              // Bank of India IIT Hyd Notarized Certification Banner
+              _buildBOINotarizedBanner(),
+              const SizedBox(height: 18),
+
+              // Account Balance Parchment Sheet Card
               _buildBalanceCard(),
               const SizedBox(height: 22),
-              _buildLiveProtectionStatus(),
-              const SizedBox(height: 24),
-              Text(
-                'Quick Actions',
-                style: GoogleFonts.plusJakartaSans(
-                  color: Colors.white,
-                  fontSize: 17,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 14),
-              _buildQuickActionsGrid(context),
+
+              // Action Buttons Row (Flat Brass Outlined)
+              _buildActionRow(),
               const SizedBox(height: 28),
+
+              // Ledger Transactions Header
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Real-Time Surveillance Feed',
-                    style: GoogleFonts.plusJakartaSans(
-                      color: Colors.white,
-                      fontSize: 17,
+                    'CERTIFIED LEDGER FEED',
+                    style: SealedLedgerTheme.plexMono(
+                      fontSize: 12,
                       fontWeight: FontWeight.bold,
+                      color: SealedLedgerColors.brassGold,
                     ),
                   ),
                   TextButton(
                     onPressed: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
-                          builder: (context) => const FraudAnalyticsScreen(),
-                        ),
+                        MaterialPageRoute(builder: (context) => const FraudAnalyticsScreen()),
                       );
                     },
                     child: Text(
-                      'Analytics',
-                      style: GoogleFonts.plusJakartaSans(
-                        color: const Color(0xFF00F2FE),
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
+                      'Audit & Metrics >',
+                      style: SealedLedgerTheme.plexMono(
+                        fontSize: 11,
+                        color: SealedLedgerColors.warmOffWhite,
                       ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
+
+              // Vertical Ledger Rows with Hairline Dividers
               ListView.separated(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: _recentTransactions.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 12),
+                separatorBuilder: (context, index) => Divider(
+                  color: SealedLedgerColors.brassDivider,
+                  height: 1,
+                ),
                 itemBuilder: (context, index) {
                   final item = _recentTransactions[index];
-                  return _buildTransactionCard(item)
-                      .animate()
-                      .fadeIn(duration: 400.ms, delay: (index * 100).ms)
-                      .slideY(begin: 0.1, end: 0);
+                  return _buildLedgerRow(item);
                 },
               ),
               const SizedBox(height: 20),
@@ -156,121 +163,98 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildTopBar() {
+  Widget _buildHeader() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Row(
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF00F2FE), Color(0xFF4FACFE)],
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF00F2FE).withValues(alpha: 0.3),
-                    blurRadius: 12,
-                    spreadRadius: 2,
-                  ),
-                ],
-              ),
-              child: const Center(
-                child: Icon(Icons.security, color: Color(0xFF0B0F19), size: 26),
+            Text(
+              'FLASHGUARD PRO',
+              style: SealedLedgerTheme.frauncesHeader(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: SealedLedgerColors.warmOffWhite,
               ),
             ),
-            const SizedBox(width: 14),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Welcome back',
-                  style: GoogleFonts.plusJakartaSans(
-                    color: const Color(0xFF94A3B8),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                Text(
-                  'Saurabh Kumar',
-                  style: GoogleFonts.plusJakartaSans(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
+            const SizedBox(height: 2),
+            Text(
+              'Cryptographic Financial Ledger',
+              style: SealedLedgerTheme.plexSans(
+                fontSize: 12,
+                color: SealedLedgerColors.brassGold,
+              ),
             ),
           ],
         ),
-        IconButton(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const SecurityCenterScreen()),
-            );
-          },
-          icon: Container(
-            padding: const EdgeInsets.all(9),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1E293B),
-              shape: BoxShape.circle,
-              border: Border.all(color: const Color(0xFF334155)),
+        // Live Monitoring Ambient Pulse Indicator
+        Row(
+          children: [
+            AnimatedBuilder(
+              animation: _pulseController,
+              builder: (context, child) {
+                return Transform.scale(
+                  scale: _pulseScaleAnim.value,
+                  child: Opacity(
+                    opacity: _pulseOpacityAnim.value,
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: SealedLedgerColors.mossGreen,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
-            child: const Icon(Icons.shield_outlined, color: Color(0xFF00F2FE), size: 22),
-          ),
+            const SizedBox(width: 8),
+            Text(
+              'Monitoring active',
+              style: SealedLedgerTheme.plexMono(
+                fontSize: 11,
+                color: SealedLedgerColors.mossGreen,
+              ),
+            ),
+          ],
         ),
       ],
     );
   }
 
-  Widget _buildBOIHackathonBadge() {
+  Widget _buildBOINotarizedBanner() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            const Color(0xFF0284C7).withValues(alpha: 0.2),
-            const Color(0xFF0D9488).withValues(alpha: 0.2),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF38BDF8).withValues(alpha: 0.5)),
+        color: SealedLedgerColors.ledgerParchment,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: SealedLedgerColors.brassGold, width: 1.2),
       ),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: const BoxDecoration(
-              color: Color(0xFF0284C7),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.workspace_premium, color: Colors.white, size: 18),
-          ),
-          const SizedBox(width: 12),
+          const Icon(Icons.verified, color: SealedLedgerColors.brassGold, size: 20),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'BANK OF INDIA HACKATHON - IIT HYDERABAD',
-                  style: GoogleFonts.plusJakartaSans(
-                    color: const Color(0xFF38BDF8),
+                  'BANK OF INDIA HACKATHON â€¢ IIT HYDERABAD',
+                  style: SealedLedgerTheme.plexMono(
                     fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.8,
+                    fontWeight: FontWeight.bold,
+                    color: SealedLedgerColors.inkNavyText,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Model Trained on Selection Round Dataset',
-                  style: GoogleFonts.plusJakartaSans(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
+                  'Model trained & certified on official Selection Round Dataset',
+                  style: SealedLedgerTheme.plexSans(
+                    fontSize: 11,
+                    color: SealedLedgerColors.parchmentMuted,
                   ),
                 ),
               ],
@@ -286,19 +270,14 @@ class _HomeScreenState extends State<HomeScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFF00F2FE).withValues(alpha: 0.3), width: 1.5),
+        color: SealedLedgerColors.ledgerParchment,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: SealedLedgerColors.brassGold, width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF00F2FE).withValues(alpha: 0.12),
-            blurRadius: 24,
-            spreadRadius: 2,
-            offset: const Offset(0, 8),
+            color: Colors.black.withValues(alpha: 0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -309,40 +288,18 @@ class _HomeScreenState extends State<HomeScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Available UPI Balance',
-                style: GoogleFonts.plusJakartaSans(
-                  color: const Color(0xFF94A3B8),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
+                'CERTIFIED UPI LEDGER BALANCE',
+                style: SealedLedgerTheme.plexMono(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: SealedLedgerColors.brassGold,
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF10B981).withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.4)),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 6,
-                      height: 6,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF10B981),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'AI Protected',
-                      style: GoogleFonts.plusJakartaSans(
-                        color: const Color(0xFF10B981),
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
+              Text(
+                'SLA: 1.51 ms',
+                style: SealedLedgerTheme.plexMono(
+                  fontSize: 11,
+                  color: SealedLedgerColors.parchmentMuted,
                 ),
               ),
             ],
@@ -350,22 +307,21 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 10),
           Text(
             'Rs. ${_balance.toStringAsFixed(2)}',
-            style: GoogleFonts.plusJakartaSans(
-              color: Colors.white,
-              fontSize: 32,
+            style: SealedLedgerTheme.plexMono(
+              fontSize: 30,
               fontWeight: FontWeight.bold,
-              letterSpacing: -0.5,
+              color: SealedLedgerColors.inkNavyText,
             ),
           ),
-          const SizedBox(height: 16),
-          const Divider(color: Color(0xFF334155), height: 1),
           const SizedBox(height: 14),
+          Divider(color: SealedLedgerColors.brassGold.withValues(alpha: 0.3), height: 1),
+          const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildBalanceDetail('Account ID', '9876****4321'),
-              _buildBalanceDetail('Daily Limit', 'Rs. 1,00,000'),
-              _buildBalanceDetail('Risk Level', '0 / 100 (Safe)'),
+              _buildParchmentDetail('ACCOUNT ID', '9876****4321'),
+              _buildParchmentDetail('DAILY LIMIT', 'Rs. 1,00,000'),
+              _buildParchmentDetail('RISK STATE', '0 / 100 (Safe)'),
             ],
           ),
         ],
@@ -373,82 +329,34 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildBalanceDetail(String label, String value) {
+  Widget _buildParchmentDetail(String label, String value) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: GoogleFonts.plusJakartaSans(color: const Color(0xFF64748B), fontSize: 11),
+          style: SealedLedgerTheme.plexMono(fontSize: 10, color: SealedLedgerColors.parchmentMuted),
         ),
-        const SizedBox(height: 3),
+        const SizedBox(height: 2),
         Text(
           value,
-          style: GoogleFonts.plusJakartaSans(
-            color: Colors.white,
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
+          style: SealedLedgerTheme.plexMono(
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+            color: SealedLedgerColors.inkNavyText,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildLiveProtectionStatus() {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E293B).withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF334155)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: const Color(0xFF00F2FE).withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(Icons.bolt_rounded, color: Color(0xFF00F2FE), size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '1.51 ms Real-Time Inference SLA',
-                  style: GoogleFonts.plusJakartaSans(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  'FraudGuard HistGradientBoosting Engine Active',
-                  style: GoogleFonts.plusJakartaSans(
-                    color: const Color(0xFF94A3B8),
-                    fontSize: 11,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuickActionsGrid(BuildContext context) {
+  Widget _buildActionRow() {
     return Row(
       children: [
         Expanded(
-          child: _buildActionButton(
-            context,
-            icon: Icons.send_rounded,
+          child: _buildFlatBrassButton(
             label: 'Send Money',
-            color: const Color(0xFF00F2FE),
+            icon: Icons.north_east,
             onTap: () {
               Navigator.push(
                 context,
@@ -457,13 +365,11 @@ class _HomeScreenState extends State<HomeScreen> {
             },
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 10),
         Expanded(
-          child: _buildActionButton(
-            context,
-            icon: Icons.qr_code_scanner_rounded,
+          child: _buildFlatBrassButton(
             label: 'Scan QR',
-            color: const Color(0xFF4FACFE),
+            icon: Icons.qr_code_scanner,
             onTap: () {
               Navigator.push(
                 context,
@@ -472,17 +378,15 @@ class _HomeScreenState extends State<HomeScreen> {
             },
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 10),
         Expanded(
-          child: _buildActionButton(
-            context,
-            icon: Icons.analytics_rounded,
-            label: 'Analytics',
-            color: const Color(0xFFA855F7),
+          child: _buildFlatBrassButton(
+            label: 'Security',
+            icon: Icons.shield,
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const FraudAnalyticsScreen()),
+                MaterialPageRoute(builder: (context) => const SecurityCenterScreen()),
               );
             },
           ),
@@ -491,46 +395,26 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildActionButton(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
+  Widget _buildFlatBrassButton({required String label, required IconData icon, required VoidCallback onTap}) {
+    return InkWell(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+        padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: const Color(0xFF1E293B),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0xFF334155)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.2),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          color: SealedLedgerColors.inkNavy,
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: SealedLedgerColors.brassGold, width: 1.2),
         ),
         child: Column(
           children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.15),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: color, size: 24),
-            ),
-            const SizedBox(height: 10),
+            Icon(icon, color: SealedLedgerColors.brassGold, size: 20),
+            const SizedBox(height: 4),
             Text(
               label,
-              style: GoogleFonts.plusJakartaSans(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
+              style: SealedLedgerTheme.plexMono(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: SealedLedgerColors.warmOffWhite,
               ),
             ),
           ],
@@ -539,98 +423,61 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildTransactionCard(TransactionItem item) {
-    Color badgeColor;
-    Color badgeBg;
-    if (item.status == 'SAFE') {
-      badgeColor = const Color(0xFF10B981);
-      badgeBg = const Color(0xFF10B981).withValues(alpha: 0.15);
-    } else if (item.status == 'SUSPICIOUS') {
-      badgeColor = const Color(0xFFF59E0B);
-      badgeBg = const Color(0xFFF59E0B).withValues(alpha: 0.15);
-    } else {
-      badgeColor = const Color(0xFFEF4444);
-      badgeBg = const Color(0xFFEF4444).withValues(alpha: 0.15);
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E293B),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF334155)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: badgeBg,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              item.status == 'SAFE'
-                  ? Icons.check_circle_outline_rounded
-                  : (item.status == 'SUSPICIOUS' ? Icons.warning_amber_rounded : Icons.block_rounded),
-              color: badgeColor,
-              size: 22,
-            ),
+  Widget _buildLedgerRow(TransactionItem item) {
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => TransactionDetailScreen(item: item),
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        );
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 14.0),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.title,
+                    style: SealedLedgerTheme.plexSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: SealedLedgerColors.warmOffWhite,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${item.date} â€¢ ${item.type}',
+                    style: SealedLedgerTheme.plexMono(
+                      fontSize: 11,
+                      color: SealedLedgerColors.brassGold.withValues(alpha: 0.7),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  item.title,
-                  style: GoogleFonts.plusJakartaSans(
-                    color: Colors.white,
+                  'Rs. ${item.amount.toStringAsFixed(2)}',
+                  style: SealedLedgerTheme.plexMono(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '${item.date} | ${item.type}',
-                  style: GoogleFonts.plusJakartaSans(
-                    color: const Color(0xFF94A3B8),
-                    fontSize: 11,
+                    color: SealedLedgerColors.warmOffWhite,
                   ),
                 ),
               ],
             ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                'Rs. ${item.amount.toStringAsFixed(2)}',
-                style: GoogleFonts.plusJakartaSans(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: badgeBg,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: badgeColor.withValues(alpha: 0.5)),
-                ),
-                child: Text(
-                  '${item.status} (${item.riskScore})',
-                  style: GoogleFonts.plusJakartaSans(
-                    color: badgeColor,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
+            const SizedBox(width: 14),
+            // Signature Element: Verdict Stamp Seal
+            VerdictSeal.fromStatus(item.status, size: 36.0),
+          ],
+        ),
       ),
     );
   }

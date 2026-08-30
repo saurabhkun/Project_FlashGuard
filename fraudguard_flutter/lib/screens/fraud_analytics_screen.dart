@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+﻿import 'package:flutter/material.dart';
+import '../theme/sealed_ledger_theme.dart';
 
 class FraudAnalyticsScreen extends StatelessWidget {
   const FraudAnalyticsScreen({super.key});
@@ -7,17 +7,21 @@ class FraudAnalyticsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0B0F19),
+      backgroundColor: SealedLedgerColors.inkNavy,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0B0F19),
+        backgroundColor: SealedLedgerColors.inkNavy,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+          icon: const Icon(Icons.arrow_back, color: SealedLedgerColors.warmOffWhite),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'FraudGuard AI Analytics',
-          style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.bold),
+          'MODEL AUDIT & METRICS',
+          style: SealedLedgerTheme.plexMono(
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+            color: SealedLedgerColors.brassGold,
+          ),
         ),
       ),
       body: SingleChildScrollView(
@@ -25,23 +29,19 @@ class FraudAnalyticsScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Bank of India IIT Hyd Hackathon Provenance Card
+            // Bank of India IIT Hyd Selection Round Notarized Certification Sheet
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(22),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFF38BDF8).withValues(alpha: 0.6), width: 1.5),
+                color: SealedLedgerColors.ledgerParchment,
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: SealedLedgerColors.brassGold, width: 1.5),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF38BDF8).withValues(alpha: 0.15),
-                    blurRadius: 20,
-                    spreadRadius: 1,
+                    color: Colors.black.withValues(alpha: 0.3),
+                    blurRadius: 14,
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
@@ -51,64 +51,55 @@ class FraudAnalyticsScreen extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF0284C7).withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: const Color(0xFF38BDF8)),
-                        ),
-                        child: Text(
-                          'BANK OF INDIA HACKATHON',
-                          style: GoogleFonts.plusJakartaSans(
-                            color: const Color(0xFF38BDF8),
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                          ),
+                      Text(
+                        'OFFICIAL DATASET PROVENANCE',
+                        style: SealedLedgerTheme.plexMono(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: SealedLedgerColors.brassGold,
                         ),
                       ),
                       Text(
                         'IIT HYDERABAD',
-                        style: GoogleFonts.plusJakartaSans(
-                          color: const Color(0xFF94A3B8),
-                          fontSize: 11,
+                        style: SealedLedgerTheme.plexMono(
+                          fontSize: 10,
                           fontWeight: FontWeight.bold,
+                          color: SealedLedgerColors.parchmentMuted,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   Text(
-                    'Official Selection Round Dataset',
-                    style: GoogleFonts.plusJakartaSans(
-                      color: Colors.white,
+                    'Bank of India Selection Round Dataset',
+                    style: SealedLedgerTheme.frauncesHeader(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
+                      color: SealedLedgerColors.inkNavyText,
                     ),
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Dataset: DataSet.csv (9,082 samples x 3,925 raw features -> 100 selected features). Provided directly by Bank of India at IIT Hyderabad selection round.',
-                    style: GoogleFonts.plusJakartaSans(
-                      color: const Color(0xFFCBD5E1),
+                    'Corpus: DataSet.csv (9,082 rows x 3,925 raw feature dimensions). Filtered to top 100 features via training fold importance. Column F3912 and target F3924 explicitly excluded to prevent data leakage.',
+                    style: SealedLedgerTheme.plexSans(
                       fontSize: 12,
-                      height: 1.4,
+                      color: SealedLedgerColors.inkNavyText,
                     ),
                   ),
                 ],
               ),
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 22),
 
-            // Active Model Engine Card
+            // Model Specification Sheet
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: const Color(0xFF1E293B),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFF00F2FE).withValues(alpha: 0.4)),
+                color: SealedLedgerColors.inkNavy,
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: SealedLedgerColors.brassGold.withValues(alpha: 0.5), width: 1.2),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -117,41 +108,30 @@ class FraudAnalyticsScreen extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Production Machine Learning Engine',
-                        style: GoogleFonts.plusJakartaSans(color: const Color(0xFF94A3B8), fontSize: 12),
+                        'ACTIVE PRODUCTION ENGINE',
+                        style: SealedLedgerTheme.plexMono(fontSize: 10, color: SealedLedgerColors.brassGold),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF00F2FE).withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          'v1.0 Frozen',
-                          style: GoogleFonts.plusJakartaSans(
-                            color: const Color(0xFF00F2FE),
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                      Text(
+                        'SHA256 FROZEN',
+                        style: SealedLedgerTheme.plexMono(fontSize: 10, color: SealedLedgerColors.mossGreen),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   Text(
                     'HistGradientBoostingClassifier',
-                    style: GoogleFonts.plusJakartaSans(
-                      color: Colors.white,
-                      fontSize: 18,
+                    style: SealedLedgerTheme.plexMono(
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
+                      color: SealedLedgerColors.warmOffWhite,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'SHA256 Freeze Hash: f23a869a5e516c53b2b4185c809151b7...',
-                    style: GoogleFonts.plusJakartaSans(
-                      color: const Color(0xFF64748B),
-                      fontSize: 11,
+                    'Hash: f23a869a5e516c53b2b4185c809151b771761ebe4c002f1f6b49aa05905472f0',
+                    style: SealedLedgerTheme.plexMono(
+                      fontSize: 10,
+                      color: SealedLedgerColors.warmOffWhite.withValues(alpha: 0.6),
                     ),
                   ),
                 ],
@@ -161,42 +141,43 @@ class FraudAnalyticsScreen extends StatelessWidget {
             const SizedBox(height: 24),
 
             Text(
-              'Measured Benchmark Metrics',
-              style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+              'MEASURED BENCHMARK AUDIT',
+              style: SealedLedgerTheme.plexMono(fontSize: 12, fontWeight: FontWeight.bold, color: SealedLedgerColors.brassGold),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
 
             Row(
               children: [
-                Expanded(child: _buildMetricCard('ROC-AUC Score', '1.0000', '100% Accuracy', const Color(0xFF10B981))),
-                const SizedBox(width: 12),
-                Expanded(child: _buildMetricCard('PR-AUC Score', '1.0000', '100% Precision', const Color(0xFF00F2FE))),
+                Expanded(child: _buildParchmentMetricCard('ROC-AUC', '1.0000', '100% Accuracy', SealedLedgerColors.mossGreen)),
+                const SizedBox(width: 10),
+                Expanded(child: _buildParchmentMetricCard('PR-AUC', '1.0000', '100% Precision', SealedLedgerColors.mossGreen)),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             Row(
               children: [
-                Expanded(child: _buildMetricCard('Inference Latency', '1.51 ms', 'SLA < 30.00 ms', const Color(0xFFA855F7))),
-                const SizedBox(width: 12),
-                Expanded(child: _buildMetricCard('Selected Features', '100', 'F3912 Excluded', const Color(0xFFF59E0B))),
+                Expanded(child: _buildParchmentMetricCard('INFERENCE SLA', '1.51 ms', 'Target < 30.00 ms', SealedLedgerColors.brassGold)),
+                const SizedBox(width: 10),
+                Expanded(child: _buildParchmentMetricCard('FEATURES', '100', 'F3912 Stripped', SealedLedgerColors.brassGold)),
               ],
             ),
 
             const SizedBox(height: 28),
 
-            // 11-Layer Risk Weights Breakdown
+            // 11-Layer Risk Rules Breakdown
             Text(
-              '11-Layer Hybrid Defense Weights',
-              style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+              '11-LAYER RISK SCORING WEIGHTS',
+              style: SealedLedgerTheme.plexMono(fontSize: 12, fontWeight: FontWeight.bold, color: SealedLedgerColors.brassGold),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
 
-            _buildLayerRow('FraudGuard ML Model Prob Weight', '0 - 85 Pts', const Color(0xFF00F2FE)),
-            _buildLayerRow('Amount & Balance Draining Anomaly', '0 - 20 Pts', const Color(0xFF38BDF8)),
-            _buildLayerRow('Transaction Velocity Spike', '0 - 15 Pts', const Color(0xFFA855F7)),
-            _buildLayerRow('Geographic & Impossible Travel', '0 - 15 Pts', const Color(0xFFF59E0B)),
-            _buildLayerRow('Device Hardware Anomaly', '0 - 10 Pts', const Color(0xFFEC4899)),
-            _buildLayerRow('Recipient & Mule Registry Check', '0 - 15 Pts', const Color(0xFFEF4444)),
+            _buildLedgerWeightRow('01', 'FraudGuard ML Model Weight', '0 - 85 Pts'),
+            _buildLedgerWeightRow('02', 'Amount & Balance Draining Anomaly', '0 - 20 Pts'),
+            _buildLedgerWeightRow('03', 'Transaction Velocity Spike', '0 - 15 Pts'),
+            _buildLedgerWeightRow('04', 'Geographic & Travel Velocity', '0 - 15 Pts'),
+            _buildLedgerWeightRow('05', 'Device Hardware Integrity Check', '0 - 10 Pts'),
+            _buildLedgerWeightRow('06', 'Recipient Mule Account Check', '0 - 15 Pts'),
+            _buildLedgerWeightRow('07', 'Time-of-Day Risk Weighting', '0 - 10 Pts'),
 
             const SizedBox(height: 30),
           ],
@@ -205,64 +186,53 @@ class FraudAnalyticsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMetricCard(String title, String value, String subtitle, Color color) {
+  Widget _buildParchmentMetricCard(String title, String value, String subtitle, Color accentColor) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E293B),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+        color: SealedLedgerColors.ledgerParchment,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: SealedLedgerColors.brassGold, width: 1.2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: GoogleFonts.plusJakartaSans(color: const Color(0xFF94A3B8), fontSize: 11)),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-          ),
+          Text(title, style: SealedLedgerTheme.plexMono(fontSize: 10, color: SealedLedgerColors.parchmentMuted)),
           const SizedBox(height: 4),
           Text(
+            value,
+            style: SealedLedgerTheme.plexMono(fontSize: 18, fontWeight: FontWeight.bold, color: SealedLedgerColors.inkNavyText),
+          ),
+          const SizedBox(height: 2),
+          Text(
             subtitle,
-            style: GoogleFonts.plusJakartaSans(color: color, fontSize: 11, fontWeight: FontWeight.w600),
+            style: SealedLedgerTheme.plexMono(fontSize: 10, fontWeight: FontWeight.bold, color: accentColor),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildLayerRow(String title, String points, Color color) {
+  Widget _buildLedgerWeightRow(String num, String title, String points) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: 8),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: const Color(0xFF1E293B).withValues(alpha: 0.6),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFF334155)),
+          color: SealedLedgerColors.inkNavy,
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: SealedLedgerColors.brassDivider),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Row(
               children: [
-                Container(
-                  width: 10,
-                  height: 10,
-                  decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  title,
-                  style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
-                ),
+                Text('$num. ', style: SealedLedgerTheme.plexMono(fontSize: 11, color: SealedLedgerColors.brassGold)),
+                Text(title, style: SealedLedgerTheme.plexSans(fontSize: 12, color: SealedLedgerColors.warmOffWhite)),
               ],
             ),
-            Text(
-              points,
-              style: GoogleFonts.plusJakartaSans(color: color, fontSize: 12, fontWeight: FontWeight.bold),
-            ),
+            Text(points, style: SealedLedgerTheme.plexMono(fontSize: 11, fontWeight: FontWeight.bold, color: SealedLedgerColors.brassGold)),
           ],
         ),
       ),

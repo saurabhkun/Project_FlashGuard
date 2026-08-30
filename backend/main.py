@@ -240,5 +240,8 @@ async def dashboard_chart_data_route():
 # 🚀 THE STARTUP BLOCK
 # This ensures the server runs and stays alive when you type 'python main.py'
 if __name__ == "__main__":
-    print("🔥 Starting FlashGuard Pro Backend on http://127.0.0.1:8000")
+    import sys
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(encoding='utf-8')
+    print("[STARTUP] Starting FlashGuard Pro Backend on http://127.0.0.1:8000")
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
