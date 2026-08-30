@@ -1,4 +1,4 @@
-import 'package:flutter/material';
+import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class FraudAnalyticsScreen extends StatelessWidget {
@@ -23,7 +23,7 @@ class FraudAnalyticsScreen extends StatelessWidget {
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
         child: Column(
-          crossAxisAlignment: CrossAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Bank of India IIT Hyd Hackathon Provenance Card
             Container(
@@ -36,17 +36,17 @@ class FraudAnalyticsScreen extends StatelessWidget {
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFF38BDF8).withOpacity(0.6), width: 1.5),
+                border: Border.all(color: const Color(0xFF38BDF8).withValues(alpha: 0.6), width: 1.5),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF38BDF8).withOpacity(0.15),
+                    color: const Color(0xFF38BDF8).withValues(alpha: 0.15),
                     blurRadius: 20,
                     spreadRadius: 1,
                   ),
                 ],
               ),
               child: Column(
-                crossAxisAlignment: CrossAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -54,7 +54,7 @@ class FraudAnalyticsScreen extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF0284C7).withOpacity(0.2),
+                          color: const Color(0xFF0284C7).withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(color: const Color(0xFF38BDF8)),
                         ),
@@ -63,7 +63,7 @@ class FraudAnalyticsScreen extends StatelessWidget {
                           style: GoogleFonts.plusJakartaSans(
                             color: const Color(0xFF38BDF8),
                             fontSize: 10,
-                            fontWeight: FontWeight.extrabold,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
                       ),
@@ -108,10 +108,10 @@ class FraudAnalyticsScreen extends StatelessWidget {
               decoration: BoxDecoration(
                 color: const Color(0xFF1E293B),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFF00F2FE).withOpacity(0.4)),
+                border: Border.all(color: const Color(0xFF00F2FE).withValues(alpha: 0.4)),
               ),
               child: Column(
-                crossAxisAlignment: CrossAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -123,7 +123,7 @@ class FraudAnalyticsScreen extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF00F2FE).withOpacity(0.15),
+                          color: const Color(0xFF00F2FE).withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
@@ -152,7 +152,6 @@ class FraudAnalyticsScreen extends StatelessWidget {
                     style: GoogleFonts.plusJakartaSans(
                       color: const Color(0xFF64748B),
                       fontSize: 11,
-                      fontFamily: 'monospace',
                     ),
                   ),
                 ],
@@ -212,10 +211,10 @@ class FraudAnalyticsScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF1E293B),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Column(
-        crossAxisAlignment: CrossAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(title, style: GoogleFonts.plusJakartaSans(color: const Color(0xFF94A3B8), fontSize: 11)),
           const SizedBox(height: 6),
@@ -239,7 +238,7 @@ class FraudAnalyticsScreen extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: const Color(0xFF1E293B).withOpacity(0.6),
+          color: const Color(0xFF1E293B).withValues(alpha: 0.6),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: const Color(0xFF334155)),
         ),

@@ -1,4 +1,4 @@
-import 'package:flutter/material';
+ï»¿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../models/transaction_model.dart';
@@ -97,7 +97,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'FraudGuard Risk Score: ${res.riskScore}/100 (${res.level})',
@@ -160,7 +160,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'FraudGuard AI Score: ${res.riskScore}/100 (HIGH RISK)',
@@ -169,7 +169,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
             const SizedBox(height: 12),
             Text('Reasons for Real-Time Block:', style: GoogleFonts.inter(color: const Color(0xFFCBD5E1), fontSize: 12, fontWeight: FontWeight.w600)),
             const SizedBox(height: 6),
-            ...res.reasons.map((r) => Text('• $r', style: GoogleFonts.inter(color: const Color(0xFF94A3B8), fontSize: 12))),
+            ...res.reasons.map((r) => Text('â€¢ $r', style: GoogleFonts.inter(color: const Color(0xFF94A3B8), fontSize: 12))),
           ],
         ),
         actions: [
@@ -198,7 +198,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Amount: ?${amount.toStringAsFixed(2)}', style: GoogleFonts.inter(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
             Text('Recipient: $recipient', style: GoogleFonts.inter(color: const Color(0xFF94A3B8), fontSize: 13)),
@@ -237,7 +237,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
         child: Column(
-          crossAxisAlignment: CrossAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Card Input
             Container(
@@ -248,7 +248,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
                 border: Border.all(color: const Color(0xFF334155)),
               ),
               child: Column(
-                crossAxisAlignment: CrossAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('Recipient Name / UPI ID', style: GoogleFonts.inter(color: const Color(0xFF94A3B8), fontSize: 13, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 8),
@@ -324,7 +324,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
                   ),
                 ),
                 child: Column(
-                  crossAxisAlignment: CrossAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
@@ -345,7 +345,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
                       style: GoogleFonts.inter(color: const Color(0xFFCBD5E1), fontSize: 13, fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(height: 6),
-                    ..._riskResult!.reasons.map((r) => Text('• $r', style: GoogleFonts.inter(color: const Color(0xFF94A3B8), fontSize: 12))),
+                    ..._riskResult!.reasons.map((r) => Text('â€¢ $r', style: GoogleFonts.inter(color: const Color(0xFF94A3B8), fontSize: 12))),
                   ],
                 ),
               ),

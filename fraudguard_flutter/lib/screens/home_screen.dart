@@ -1,4 +1,4 @@
-import 'package:flutter/material';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -172,7 +172,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF00F2FE).withOpacity(0.3),
+                    color: const Color(0xFF00F2FE).withValues(alpha: 0.3),
                     blurRadius: 12,
                     spreadRadius: 2,
                   ),
@@ -184,7 +184,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(width: 14),
             Column(
-              crossAxisAlignment: CrossAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Welcome back',
@@ -233,12 +233,12 @@ class _HomeScreenState extends State<HomeScreen> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            const Color(0xFF0284C7).withOpacity(0.2),
-            const Color(0xFF0D9488).withOpacity(0.2),
+            const Color(0xFF0284C7).withValues(alpha: 0.2),
+            const Color(0xFF0D9488).withValues(alpha: 0.2),
           ],
         ),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF38BDF8).withOpacity(0.5)),
+        border: Border.all(color: const Color(0xFF38BDF8).withValues(alpha: 0.5)),
       ),
       child: Row(
         children: [
@@ -253,14 +253,14 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(width: 12),
           Expanded(
             child: Column(
-              crossAxisAlignment: CrossAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'BANK OF INDIA HACKATHON - IIT HYDERABAD',
                   style: GoogleFonts.plusJakartaSans(
                     color: const Color(0xFF38BDF8),
                     fontSize: 10,
-                    fontWeight: FontWeight.extrabold,
+                    fontWeight: FontWeight.w800,
                     letterSpacing: 0.8,
                   ),
                 ),
@@ -292,10 +292,10 @@ class _HomeScreenState extends State<HomeScreen> {
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFF00F2FE).withOpacity(0.3), width: 1.5),
+        border: Border.all(color: const Color(0xFF00F2FE).withValues(alpha: 0.3), width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF00F2FE).withOpacity(0.12),
+            color: const Color(0xFF00F2FE).withValues(alpha: 0.12),
             blurRadius: 24,
             spreadRadius: 2,
             offset: const Offset(0, 8),
@@ -303,7 +303,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -319,9 +319,9 @@ class _HomeScreenState extends State<HomeScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF10B981).withOpacity(0.15),
+                  color: const Color(0xFF10B981).withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: const Color(0xFF10B981).withOpacity(0.4)),
+                  border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.4)),
                 ),
                 child: Row(
                   children: [
@@ -375,7 +375,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildBalanceDetail(String label, String value) {
     return Column(
-      crossAxisAlignment: CrossAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
@@ -398,7 +398,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E293B).withOpacity(0.7),
+        color: const Color(0xFF1E293B).withValues(alpha: 0.7),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFF334155)),
       ),
@@ -407,7 +407,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: const Color(0xFF00F2FE).withOpacity(0.15),
+              color: const Color(0xFF00F2FE).withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Icon(Icons.bolt_rounded, color: Color(0xFF00F2FE), size: 20),
@@ -415,7 +415,7 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(width: 12),
           Expanded(
             child: Column(
-              crossAxisAlignment: CrossAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   '1.51 ms Real-Time Inference SLA',
@@ -467,7 +467,7 @@ class _HomeScreenState extends State<HomeScreen> {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const QRScannerScreen()),
+                MaterialPageRoute(builder: (context) => const QrScannerScreen()),
               );
             },
           ),
@@ -508,7 +508,7 @@ class _HomeScreenState extends State<HomeScreen> {
           border: Border.all(color: const Color(0xFF334155)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
+              color: Colors.black.withValues(alpha: 0.2),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -519,7 +519,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.15),
+                color: color.withValues(alpha: 0.15),
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, color: color, size: 24),
@@ -544,13 +544,13 @@ class _HomeScreenState extends State<HomeScreen> {
     Color badgeBg;
     if (item.status == 'SAFE') {
       badgeColor = const Color(0xFF10B981);
-      badgeBg = const Color(0xFF10B981).withOpacity(0.15);
+      badgeBg = const Color(0xFF10B981).withValues(alpha: 0.15);
     } else if (item.status == 'SUSPICIOUS') {
       badgeColor = const Color(0xFFF59E0B);
-      badgeBg = const Color(0xFFF59E0B).withOpacity(0.15);
+      badgeBg = const Color(0xFFF59E0B).withValues(alpha: 0.15);
     } else {
       badgeColor = const Color(0xFFEF4444);
-      badgeBg = const Color(0xFFEF4444).withOpacity(0.15);
+      badgeBg = const Color(0xFFEF4444).withValues(alpha: 0.15);
     }
 
     return Container(
@@ -579,7 +579,7 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(width: 14),
           Expanded(
             child: Column(
-              crossAxisAlignment: CrossAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   item.title,
@@ -601,7 +601,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           Column(
-            crossAxisAlignment: CrossAlignment.end,
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
                 'Rs. ${item.amount.toStringAsFixed(2)}',
@@ -617,7 +617,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 decoration: BoxDecoration(
                   color: badgeBg,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: badgeColor.withOpacity(0.5)),
+                  border: Border.all(color: badgeColor.withValues(alpha: 0.5)),
                 ),
                 child: Text(
                   '${item.status} (${item.riskScore})',
