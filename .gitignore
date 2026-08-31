@@ -1,5 +1,5 @@
 # === Data & Large Files ===
-# Ignores the heavy dataset (GitHub limit is 100MB)
+# Ignores heavy datasets (GitHub limit is 100MB)
 *.csv
 processed_paysim.csv
 
@@ -9,18 +9,40 @@ __pycache__/
 *$py.class
 .venv/
 venv/
+env/
+ENV/
 .env
 
 # === Database ===
-# Keeps your local data private and avoids merge conflicts
+# Keeps local transaction logs private and avoids merge conflicts
 *.db
 *.sqlite3
 
-# === Node / React Frontend ===
+# === Flutter / Dart ===
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+**/build/
+**/android/build/
+**/ios/Flutter/.last_build_id
+**/doc/api/
+coverage/
+
+# === IDEs & Editors ===
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+*.swp
+*.swo
+
+# === Node / React (if any) ===
 node_modules/
 dist/
 .eslintcache
-.vscode/
 
 # === System Files ===
 .DS_Store
