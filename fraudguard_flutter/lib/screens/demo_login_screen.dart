@@ -4,6 +4,10 @@ import '../services/localization_service.dart';
 import '../widgets/flashguard_logo.dart';
 import 'home_screen.dart';
 
+import 'dart:async';
+import '../services/api_service.dart';
+import '../models/transaction_model.dart';
+
 class DemoLoginScreen extends StatefulWidget {
   const DemoLoginScreen({super.key});
 
@@ -16,8 +20,26 @@ class _DemoLoginScreenState extends State<DemoLoginScreen> {
   final _otpController = TextEditingController();
   bool _otpSent = false;
 
+  HealthStatus? _healthStatus;
+  Timer? _healthTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkHealth();
+    _healthTimer = Timer.periodic(const Duration(seconds: 3), (_) => _checkHealth());
+  }
+
+  Future<void> _checkHealth() async {
+    final status = await ApiService.checkHealth();
+    if (mounted) {
+      setState(() => _healthStatus = status);
+    }
+  }
+
   @override
   void dispose() {
+    _healthTimer?.cancel();
     _phoneController.dispose();
     _otpController.dispose();
     super.dispose();
@@ -93,7 +115,12 @@ class _DemoLoginScreenState extends State<DemoLoginScreen> {
                 ],
               ),
 
-              const SizedBox(height: 36),
+              const SizedBox(height: 12),
+
+              // Backend Connection Status Banner
+              _buildBackendConnectionBanner(),
+
+              const SizedBox(height: 24),
 
               // Logo Lockup
               const FlashGuardLogo(size: 64, showWordmark: true),
@@ -252,6 +279,53 @@ class _DemoLoginScreenState extends State<DemoLoginScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildBackendConnectionBanner() {
+    final isChecking = _healthStatus == null;
+    final isOnline = _healthStatus?.isOnline ?? false;
+
+    final color = isChecking
+        ? AntivirusColors.amberOchre
+        : (isOnline ? AntivirusColors.forestGreen : AntivirusColors.deepCrimson);
+
+    final icon = isChecking
+        ? Icons.sync
+        : (isOnline ? Icons.check_circle : Icons.error_outline);
+
+    final statusText = isChecking
+        ? 'Checking AI Engine...'
+        : (isOnline
+            ? '🟢 BACKEND CONNECTED (${ApiService.baseUrl})'
+            : '🔴 BACKEND DISCONNECTED (Offline)');
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color, width: 1.2),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              statusText,
+              textAlign: TextAlign.center,
+              style: AntivirusTheme.body(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

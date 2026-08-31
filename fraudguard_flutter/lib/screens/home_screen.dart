@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../theme/antivirus_theme.dart';
 import '../services/localization_service.dart';
@@ -55,10 +56,19 @@ class _HomeScreenState extends State<HomeScreen> {
     ),
   ];
 
+  Timer? _healthTimer;
+
   @override
   void initState() {
     super.initState();
     _loadData();
+    _healthTimer = Timer.periodic(const Duration(seconds: 3), (_) => _loadData());
+  }
+
+  @override
+  void dispose() {
+    _healthTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadData() async {
