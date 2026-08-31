@@ -204,10 +204,33 @@ python scripts/verify_claims.py
 ```
 
 ### 3. Run the Flutter Mobile App (Android Emulator)
+
+#### Terminal (Antigravity / PowerShell / Command Prompt)
 ```bash
+# 1. Navigate to the flutter project folder
 cd fraudguard_flutter
-flutter run -d emulator-5554 --no-pub --android-skip-build-dependency-validation
+
+# 2. Get packages / dependencies
+flutter pub get
+
+# 3. Check connected emulators and devices
+flutter devices
+
+# 4. Run the app on the running Android Emulator
+flutter run
+
+# (Or specify your emulator ID directly, e.g. emulator-5554)
+# flutter run -d emulator-5554
 ```
+
+> **Note on Emulator Network:** The Android Emulator communicates with the host FastAPI backend via `http://10.0.2.2:8000`, which is preconfigured in `lib/services/api_config.dart`. Ensure your backend is running before launching the app!
+
+#### Android Studio Workflow
+1. Open `fraudguard_flutter` in Android Studio.
+2. Launch your Android Virtual Device (AVD) from **Device Manager**.
+3. Select your emulator in the top device dropdown.
+4. Click the green **Run (▶)** button (or press `Shift + F10`).
+
 
 ---
 

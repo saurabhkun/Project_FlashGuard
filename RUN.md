@@ -1,52 +1,75 @@
-# Running FlashGuard - Frontend + Backend
+# Running FlashGuard - Backend + Flutter Mobile App (Android Emulator)
 
 ## Quick Start
 
 ### 1. Start the Backend Server (FastAPI)
 
-Open a terminal and run:
+Open a terminal in Antigravity or PowerShell:
 ```bash
+# 1. Install dependencies
+pip install -r requirements.txt
+
+# 2. Start the FastAPI server
 cd backend
-uvicorn main:app --reload --port 8000
+python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-The backend will start at: http://localhost:8000
+- Backend API: http://localhost:8000
+- Swagger Docs: http://localhost:8000/docs
+- Health Check: http://localhost:8000/health
 
-### 2. Start the Frontend (React + Vite)
+> ⚠️ Keep this terminal running in the background!
 
-Open a new terminal and run:
+---
+
+### 2. Start the Flutter App on Android Emulator
+
+Open a **new terminal tab** (or open in Android Studio):
+
+#### Method A: Terminal (Antigravity / PowerShell)
 ```bash
-cd Frontend
-npm run dev
+# 1. Navigate to the flutter app folder
+cd fraudguard_flutter
+
+# 2. Download Flutter packages
+flutter pub get
+
+# 3. View connected devices / emulators
+flutter devices
+
+# 4. Launch the app on your running emulator
+flutter run
 ```
 
-The frontend will start at: http://localhost:5173
+#### Method B: Android Studio
+1. Open the project folder `fraudguard_flutter` in Android Studio.
+2. Launch your Android Virtual Device (AVD) from **Device Manager**.
+3. Select the emulator from the device target dropdown at the top.
+4. Click the green **Run (▶)** button (or press `Shift + F10`).
 
-## How It Works
+---
 
-- The frontend uses a **proxy** configured in `vite.config.ts` to forward API requests to the backend
-- When the frontend calls `/api/predict`, Vite proxies it to `http://localhost:8000/predict`
-- The backend has **CORS** enabled to allow requests from the frontend
-- The backend uses **in-memory storage** for transactions (data resets when server restarts)
+## 🌐 Emulator Connection & How It Works
 
-## API Endpoints
+- The Android emulator accesses the host machine's FastAPI backend using **`http://10.0.2.2:8000`** (pre-configured in `lib/services/api_config.dart`).
+- When running backend with `--host 0.0.0.0`, it accepts incoming connections from both `127.0.0.1` and the emulator's `10.0.2.2` loopback.
+
+---
+
+## 🔍 API Endpoints
 
 | Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/predict` | POST | Check transaction for fraud |
-| `/dashboard/stats` | GET | Get dashboard statistics |
-| `/transactions` | GET | Get transaction history |
-| `/health` | GET | Health check |
+|---|---|---|
+| `/predict` | POST | Scan & evaluate transaction for fraud |
+| `/dashboard/stats` | GET | Get real-time engine statistics |
+| `/history` | GET | Get transaction log history |
+| `/health` | GET | Health check status |
 
-## Testing the Connection
+---
 
-1. Start both servers as shown above
-2. Open http://localhost:5173 in your browser
-3. The frontend should now communicate with the backend
+## 🛠️ Troubleshooting
 
-## Troubleshooting
-
-- **CORS Error**: Make sure backend is running on port 8000
-- **Connection Refused**: Check that both servers are running in separate terminals
-- **No Data**: The backend uses in-memory storage, so data resets when you restart the backend server
+- **Backend Connection Failed on Emulator**: Verify backend was started with `--host 0.0.0.0` on port 8000.
+- **No Devices Found**: Start your emulator from Android Studio's **Device Manager** first, then re-run `flutter devices`.
+- **Package Errors**: Run `flutter clean` followed by `flutter pub get`.
 

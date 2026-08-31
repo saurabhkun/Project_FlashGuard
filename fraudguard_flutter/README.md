@@ -51,14 +51,16 @@ npm run dev
 
 ### 4. Run Flutter Android App
 
-**Option A — Android Emulator (Pixel 9 / API 37)**
+**Option A — Android Emulator**
 ```bash
 cd fraudguard_flutter
 flutter pub get
-flutter run -d emulator-5554
+flutter devices
+flutter run
 ```
 The app automatically connects to `10.0.2.2:8000` — this is the Android
 emulator's loopback address that maps to the host machine's `127.0.0.1`.
+
 
 **Option B — Physical Android Device**
 1. Update `lib/services/api_config.dart`:
