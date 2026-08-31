@@ -1,113 +1,186 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/transaction_model.dart';
-import 'telemetry_service.dart';
+import 'api_config.dart';
 
 class ApiService {
-  // Configurable base URL. Use 10.0.2.2 for Android Emulator, 127.0.0.1 for Desktop/Web, or your Local IP
-  static String baseUrl = 'http://127.0.0.1:8000';
+  // Resolved at runtime — see ApiConfig
+  static String baseUrl = ApiConfig.baseUrl;
+  static bool _urlResolved = false;
 
-  static Future<Map<String, dynamic>> checkHealth() async {
-    try {
-      final response = await http.get(Uri.parse('$baseUrl/health')).timeout(const Duration(seconds: 4));
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return {
-          'online': true,
-          'model': data['model'] ?? 'FraudGuard',
-          'version': data['model_version'] ?? 'fraudguard-dataset-v1',
-          'status': data['status'] ?? 'healthy',
-        };
-      }
-    } catch (e) {
-      // Try Android emulator loopback host if 127.0.0.1 fails
+  /// Try each candidate URL and use the first that responds.
+  /// Android emulator: 10.0.2.2 → host machine's localhost
+  /// Physical device: use your LAN IP in ApiConfig.candidateUrls
+  static Future<HealthStatus> checkHealth() async {
+    for (final candidate in ApiConfig.candidateUrls) {
       try {
-        final response = await http.get(Uri.parse('http://10.0.2.2:8000/health')).timeout(const Duration(seconds: 2));
+        final response = await http
+            .get(Uri.parse('$candidate/health'))
+            .timeout(ApiConfig.connectTimeout);
         if (response.statusCode == 200) {
-          baseUrl = 'http://10.0.2.2:8000';
-          final data = jsonDecode(response.body);
-          return {
-            'online': true,
-            'model': data['model'] ?? 'FraudGuard',
-            'version': data['model_version'] ?? 'fraudguard-dataset-v1',
-            'status': data['status'] ?? 'healthy',
-          };
+          final data = jsonDecode(response.body) as Map<String, dynamic>;
+          if (!_urlResolved) {
+            baseUrl = candidate;
+            _urlResolved = true;
+          }
+          return HealthStatus.fromJson(data);
         }
-      } catch (_) {}
+      } catch (_) {
+        // Try next candidate
+      }
     }
-    return {
-      'online': false,
-      'model': 'FraudGuard (Local Cache)',
-      'version': 'fraudguard-dataset-v1',
-      'status': 'offline',
-    };
+    return HealthStatus.offline();
   }
 
+  /// POST /predict — core fraud evaluation
   static Future<RiskEvaluationResult> evaluateTransaction({
     required double amount,
     required String recipient,
     required String type,
     double oldBalanceOrg = 50000.0,
+    String location = 'Mumbai, India',
+    String deviceId = 'FLUTTER_ANDROID',
   }) async {
-    final telemetry = await TelemetryService.getDeviceTelemetry();
+    // Ensure we have a working URL
+    if (!_urlResolved) {
+      await checkHealth();
+    }
 
     final payload = {
       'step': 1,
       'type': type,
       'amount': amount,
-      'nameOrig': 'USER_MOBILE_FLUTTER',
+      'nameOrig': 'USER_FLASHGUARD_MOBILE',
       'oldbalanceOrg': oldBalanceOrg,
       'newbalanceOrig': (oldBalanceOrg - amount).clamp(0.0, double.infinity),
       'nameDest': recipient,
       'oldbalanceDest': 0.0,
       'newbalanceDest': amount,
-      'location': telemetry['location'],
-      'gps_coordinates': telemetry['gps_coordinates'],
-      'device_id': telemetry['device_id'],
-      'ip_address': telemetry['ip_address'],
+      'location': location,
+      'gps_coordinates': '19.0760, 72.8777', // Default Mumbai
+      'device_id': deviceId,
+      'ip_address': '10.0.2.2',
+      'is_fraud_label': 0,
     };
 
     try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/predict'),
-        headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
-        body: jsonEncode(payload),
-      ).timeout(const Duration(seconds: 5));
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/predict'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: jsonEncode(payload),
+          )
+          .timeout(ApiConfig.requestTimeout);
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
         return RiskEvaluationResult.fromJson(data);
+      } else if (response.statusCode == 429) {
+        // Rate limited — wait and retry once
+        await Future.delayed(const Duration(milliseconds: 500));
+        final retryResponse = await http
+            .post(
+              Uri.parse('$baseUrl/predict'),
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode(payload),
+            )
+            .timeout(ApiConfig.requestTimeout);
+        if (retryResponse.statusCode == 200) {
+          return RiskEvaluationResult.fromJson(
+            jsonDecode(retryResponse.body) as Map<String, dynamic>,
+          );
+        }
+        throw Exception('Rate limited (429). Please wait a moment.');
       } else {
-        throw Exception('Server returned ${response.statusCode}');
+        throw Exception('Server error: ${response.statusCode}');
       }
     } catch (e) {
-      // Local Heuristic Fallback if network is disconnected
-      int fallbackScore = 0;
-      String fallbackLevel = 'SAFE';
-      String fallbackDecision = 'ACCEPT';
-      List<String> fallbackReasons = ['Offline evaluation (Server disconnected)'];
-
-      if (amount >= 100000) {
-        fallbackScore = 85;
-        fallbackLevel = 'FRAUD';
-        fallbackDecision = 'BLOCK';
-        fallbackReasons.add('High transfer amount (?100,000+) flagged locally');
-      } else if (amount >= 50000) {
-        fallbackScore = 45;
-        fallbackLevel = 'SUSPICIOUS';
-        fallbackDecision = 'REVIEW';
-        fallbackReasons.add('Substantial transfer amount (?50,000+) requires step-up auth');
-      }
-
-      return RiskEvaluationResult(
-        riskScore: fallbackScore,
-        level: fallbackLevel,
-        decision: fallbackDecision,
-        reasons: fallbackReasons,
-        transactionId: 'TXN-OFFLINE-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
-        isNewUser: true,
-        amountDeviation: 0.0,
-      );
+      // Local heuristic fallback when backend is unavailable
+      return _localFallback(amount, recipient);
     }
+  }
+
+  /// GET /history — transaction history from SQLite
+  static Future<List<TransactionItem>> getTransactionHistory({int limit = 20}) async {
+    if (!_urlResolved) await checkHealth();
+    try {
+      final response = await http
+          .get(Uri.parse('$baseUrl/history'))
+          .timeout(ApiConfig.requestTimeout);
+      if (response.statusCode == 200) {
+        final list = jsonDecode(response.body) as List<dynamic>;
+        return list
+            .take(limit)
+            .map((e) => TransactionItem.fromJson(e as Map<String, dynamic>))
+            .toList();
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  /// GET /dashboard/stats
+  static Future<DashboardStats> getDashboardStats() async {
+    if (!_urlResolved) await checkHealth();
+    try {
+      final response = await http
+          .get(Uri.parse('$baseUrl/dashboard/stats'))
+          .timeout(ApiConfig.requestTimeout);
+      if (response.statusCode == 200) {
+        return DashboardStats.fromJson(
+          jsonDecode(response.body) as Map<String, dynamic>,
+        );
+      }
+    } catch (_) {}
+    return DashboardStats.empty();
+  }
+
+  /// Local heuristic fallback — used ONLY when backend is unreachable
+  static RiskEvaluationResult _localFallback(double amount, String recipient) {
+    int score = 0;
+    final reasons = <String>['⚠ Security engine offline — local evaluation only'];
+    final recipientUpper = recipient.toUpperCase();
+
+    if (recipientUpper.contains('MULE') ||
+        recipientUpper.contains('SUSPICIOUS') ||
+        recipientUpper.contains('M999')) {
+      score += 50;
+      reasons.add('Flagged recipient identifier detected');
+    }
+    if (amount >= 100000) {
+      score += 40;
+      reasons.add('High transfer amount (₹1,00,000+) requires server verification');
+    } else if (amount >= 50000) {
+      score += 25;
+      reasons.add('Substantial amount (₹50,000+)');
+    } else if (amount >= 10000) {
+      score += 10;
+    }
+
+    score = score.clamp(0, 100);
+    String level, decision;
+    if (score <= 40) {
+      level = 'SAFE';
+      decision = 'ACCEPT';
+    } else if (score <= 80) {
+      level = 'SUSPICIOUS';
+      decision = 'REVIEW';
+    } else {
+      level = 'FRAUD';
+      decision = 'BLOCK';
+    }
+
+    return RiskEvaluationResult(
+      riskScore: score,
+      level: level,
+      decision: decision,
+      reasons: reasons,
+      transactionId: 'TXN-OFFLINE-${DateTime.now().millisecondsSinceEpoch % 100000}',
+      isNewUser: true,
+      amountDeviation: 0.0,
+      behavioralInsight: 'Offline mode — connect to FraudGuard backend for full AI analysis',
+    );
   }
 }

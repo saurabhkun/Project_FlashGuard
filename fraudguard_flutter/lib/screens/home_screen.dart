@@ -1,11 +1,13 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import '../theme/antivirus_theme.dart';
+import '../services/localization_service.dart';
+import '../services/api_service.dart';
 import '../models/transaction_model.dart';
-import '../theme/sealed_ledger_theme.dart';
-import '../widgets/verdict_seal.dart';
+import '../widgets/protection_shield.dart';
+import '../widgets/flashguard_logo.dart';
 import 'send_money_screen.dart';
-import 'qr_scanner_screen.dart';
-import 'security_center_screen.dart';
 import 'fraud_analytics_screen.dart';
+import 'settings_screen.dart';
 import 'transaction_detail_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -15,47 +17,40 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
-  final double _balance = 84500.00;
-  late AnimationController _pulseController;
-  late Animation<double> _pulseScaleAnim;
-  late Animation<double> _pulseOpacityAnim;
+class _HomeScreenState extends State<HomeScreen> {
+  int _currentIndex = 0;
 
-  final List<TransactionItem> _recentTransactions = [
+  HealthStatus? _health;
+  DashboardStats _stats = DashboardStats.empty();
+  List<TransactionItem> _recentTransactions = [];
+  bool _loading = true;
+
+  static final List<TransactionItem> _fallbackTransactions = [
     TransactionItem(
       id: '1',
-      title: 'Starbucks Cyber Hub',
-      amount: 350.0,
+      title: 'Rahul Kumar (rahul@okicici)',
+      amount: 500.0,
       status: 'SAFE',
       riskScore: 0,
       date: 'Today, 2:15 PM',
-      type: 'PAYMENT',
+      type: 'TRANSFER',
     ),
     TransactionItem(
       id: '2',
-      title: 'UPI Transfer to Rahul',
-      amount: 1500.0,
-      status: 'SAFE',
-      riskScore: 5,
+      title: 'Electronics Merchant Store',
+      amount: 8500.0,
+      status: 'SUSPICIOUS',
+      riskScore: 55,
       date: 'Yesterday, 6:40 PM',
-      type: 'TRANSFER',
+      type: 'PAYMENT',
     ),
     TransactionItem(
       id: '3',
-      title: 'Electronics Superstore',
-      amount: 45000.0,
-      status: 'SUSPICIOUS',
-      riskScore: 48,
-      date: '25 Aug 2026',
-      type: 'TRANSFER',
-    ),
-    TransactionItem(
-      id: '4',
-      title: 'Flagged Overseas Transfer',
-      amount: 100000.0,
+      title: 'Quarantined: M999_SUSPICIOUS@upi',
+      amount: 15000.0,
       status: 'FRAUD',
-      riskScore: 85,
-      date: '24 Aug 2026',
+      riskScore: 92,
+      date: '25 Aug, 11:30 PM',
       type: 'TRANSFER',
     ),
   ];
@@ -63,159 +58,158 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   @override
   void initState() {
     super.initState();
-    // Ambient slow pulse (~2s cycle, subtle scale + opacity only, no glow)
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2000),
-    )..repeat(reverse: true);
-
-    _pulseScaleAnim = Tween<double>(begin: 0.85, end: 1.15).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-    );
-
-    _pulseOpacityAnim = Tween<double>(begin: 0.45, end: 0.95).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-    );
+    _loadData();
   }
 
-  @override
-  void dispose() {
-    _pulseController.dispose();
-    super.dispose();
+  Future<void> _loadData() async {
+    final health = await ApiService.checkHealth();
+    final stats = await ApiService.getDashboardStats();
+    final history = await ApiService.getTransactionHistory(limit: 10);
+
+    if (mounted) {
+      setState(() {
+        _health = health;
+        _stats = stats;
+        _recentTransactions = history.isEmpty ? _fallbackTransactions : history;
+        _loading = false;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: SealedLedgerColors.inkNavy,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Top Bar & Live Monitoring Pulse
-              _buildHeader(),
-              const SizedBox(height: 18),
+    final lang = AppLanguage();
 
-              // Bank of India IIT Hyd Notarized Certification Banner
-              _buildBOINotarizedBanner(),
-              const SizedBox(height: 18),
-
-              // Account Balance Parchment Sheet Card
-              _buildBalanceCard(),
-              const SizedBox(height: 22),
-
-              // Action Buttons Row (Flat Brass Outlined)
-              _buildActionRow(),
-              const SizedBox(height: 28),
-
-              // Ledger Transactions Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'CERTIFIED LEDGER FEED',
-                    style: SealedLedgerTheme.plexMono(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: SealedLedgerColors.brassGold,
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const FraudAnalyticsScreen()),
-                      );
-                    },
-                    child: Text(
-                      'Audit & Metrics >',
-                      style: SealedLedgerTheme.plexMono(
-                        fontSize: 11,
-                        color: SealedLedgerColors.warmOffWhite,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-
-              // Vertical Ledger Rows with Hairline Dividers
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: _recentTransactions.length,
-                separatorBuilder: (context, index) => Divider(
-                  color: SealedLedgerColors.brassDivider,
-                  height: 1,
-                ),
-                itemBuilder: (context, index) {
-                  final item = _recentTransactions[index];
-                  return _buildLedgerRow(item);
-                },
-              ),
-              const SizedBox(height: 20),
-            ],
+    return AnimatedBuilder(
+      animation: lang,
+      builder: (_, __) {
+        return Scaffold(
+          backgroundColor: AntivirusColors.warmBeige,
+          body: SafeArea(
+            child: _buildCurrentTab(),
           ),
+          bottomNavigationBar: _buildBottomNav(),
+        );
+      },
+    );
+  }
+
+  Widget _buildCurrentTab() {
+    switch (_currentIndex) {
+      case 0:
+        return _buildHomeTab();
+      case 1:
+        return const SendMoneyScreen();
+      case 2:
+        return const FraudAnalyticsScreen();
+      case 3:
+        return const SettingsScreen();
+      default:
+        return _buildHomeTab();
+    }
+  }
+
+  Widget _buildHomeTab() {
+    final isOnline = _health?.isOnline ?? false;
+
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      color: AntivirusColors.forestGreen,
+      backgroundColor: AntivirusColors.softIvory,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Top Bar
+            _buildTopBar(isOnline),
+
+            const SizedBox(height: 20),
+
+            // Large Protection Shield Hero Card
+            _buildProtectionHeroCard(isOnline),
+
+            const SizedBox(height: 18),
+
+            // Stats Tiles
+            _buildStatsRow(),
+
+            const SizedBox(height: 22),
+
+            // Demo Scenario Shortcuts
+            _buildDemoPresetsSection(),
+
+            const SizedBox(height: 24),
+
+            // Recent Scans & Protection Log
+            _buildRecentScansSection(),
+
+            const SizedBox(height: 20),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildTopBar(bool isOnline) {
+    final lang = AppLanguage();
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'FLASHGUARD PRO',
-              style: SealedLedgerTheme.frauncesHeader(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                color: SealedLedgerColors.warmOffWhite,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              'Cryptographic Financial Ledger',
-              style: SealedLedgerTheme.plexSans(
-                fontSize: 12,
-                color: SealedLedgerColors.brassGold,
-              ),
-            ),
-          ],
-        ),
-        // Live Monitoring Ambient Pulse Indicator
+        const FlashGuardLogo(size: 40, showWordmark: true),
         Row(
           children: [
-            AnimatedBuilder(
-              animation: _pulseController,
-              builder: (context, child) {
-                return Transform.scale(
-                  scale: _pulseScaleAnim.value,
-                  child: Opacity(
-                    opacity: _pulseOpacityAnim.value,
-                    child: Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: SealedLedgerColors.mossGreen,
-                        shape: BoxShape.circle,
-                      ),
+            // Online status tag
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: (isOnline ? AntivirusColors.forestGreen : AntivirusColors.amberOchre)
+                    .withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isOnline ? AntivirusColors.forestGreen : AntivirusColors.amberOchre,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    isOnline ? Icons.shield : Icons.wifi_off,
+                    size: 14,
+                    color: isOnline ? AntivirusColors.forestGreen : AntivirusColors.amberOchre,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    isOnline ? 'AI Online' : 'Offline Mode',
+                    style: AntivirusTheme.body(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: isOnline ? AntivirusColors.forestGreen : AntivirusColors.amberOchre,
                     ),
                   ),
-                );
-              },
+                ],
+              ),
             ),
             const SizedBox(width: 8),
-            Text(
-              'Monitoring active',
-              style: SealedLedgerTheme.plexMono(
-                fontSize: 11,
-                color: SealedLedgerColors.mossGreen,
+            // Language Toggle
+            InkWell(
+              onTap: () => lang.toggleLanguage(),
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: AntivirusColors.softIvory,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AntivirusColors.borderSubtle),
+                ),
+                child: Text(
+                  lang.isHindi ? 'English' : 'हिंदी',
+                  style: AntivirusTheme.body(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AntivirusColors.forestGreen,
+                  ),
+                ),
               ),
             ),
           ],
@@ -224,37 +218,90 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
-  Widget _buildBOINotarizedBanner() {
+  Widget _buildProtectionHeroCard(bool isOnline) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        color: SealedLedgerColors.ledgerParchment,
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: SealedLedgerColors.brassGold, width: 1.2),
+        color: AntivirusColors.softIvory,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: isOnline ? AntivirusColors.forestGreen : AntivirusColors.amberOchre,
+          width: 2,
+        ),
       ),
-      child: Row(
+      child: Column(
         children: [
-          const Icon(Icons.verified, color: SealedLedgerColors.brassGold, size: 20),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          Text(
+            AppLanguage.t('protectionStatus'),
+            style: AntivirusTheme.body(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: AntivirusColors.textMuted,
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Big ~140px ProtectionShield
+          ProtectionShield(
+            verdict: isOnline ? ProtectionVerdict.safe : ProtectionVerdict.review,
+            size: 110,
+            animateOnEntry: true,
+          ),
+
+          const SizedBox(height: 16),
+
+          Text(
+            isOnline
+                ? AppLanguage.t('protected')
+                : AppLanguage.t('limitedProtection'),
+            style: AntivirusTheme.header(
+              fontSize: 26,
+              fontWeight: FontWeight.w700,
+              color: isOnline ? AntivirusColors.forestGreen : AntivirusColors.amberOchre,
+            ),
+          ),
+
+          const SizedBox(height: 4),
+
+          Text(
+            isOnline
+                ? AppLanguage.t('protectedSub')
+                : AppLanguage.t('limitedSub'),
+            textAlign: TextAlign.center,
+            style: AntivirusTheme.body(
+              fontSize: 15,
+              color: AntivirusColors.inkText,
+            ),
+          ),
+
+          const SizedBox(height: 14),
+
+          // Threat level display
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: AntivirusColors.warmBeige,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AntivirusColors.borderSubtle),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
+                const Icon(Icons.security, size: 18, color: AntivirusColors.forestGreen),
+                const SizedBox(width: 8),
                 Text(
-                  'BANK OF INDIA HACKATHON â€¢ IIT HYDERABAD',
-                  style: SealedLedgerTheme.plexMono(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: SealedLedgerColors.inkNavyText,
-                  ),
+                  '${AppLanguage.t('threatLevel')}: ',
+                  style: AntivirusTheme.body(fontSize: 14, color: AntivirusColors.textMuted),
                 ),
-                const SizedBox(height: 2),
                 Text(
-                  'Model trained & certified on official Selection Round Dataset',
-                  style: SealedLedgerTheme.plexSans(
-                    fontSize: 11,
-                    color: SealedLedgerColors.parchmentMuted,
+                  _stats.overallRiskScore <= 30
+                      ? AppLanguage.t('threatLow')
+                      : AppLanguage.t('threatHigh'),
+                  style: AntivirusTheme.amount(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AntivirusColors.forestGreen,
                   ),
                 ),
               ],
@@ -265,220 +312,275 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
-  Widget _buildBalanceCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        color: SealedLedgerColors.ledgerParchment,
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: SealedLedgerColors.brassGold, width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'CERTIFIED UPI LEDGER BALANCE',
-                style: SealedLedgerTheme.plexMono(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  color: SealedLedgerColors.brassGold,
-                ),
-              ),
-              Text(
-                'SLA: 1.51 ms',
-                style: SealedLedgerTheme.plexMono(
-                  fontSize: 11,
-                  color: SealedLedgerColors.parchmentMuted,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            'Rs. ${_balance.toStringAsFixed(2)}',
-            style: SealedLedgerTheme.plexMono(
-              fontSize: 30,
-              fontWeight: FontWeight.bold,
-              color: SealedLedgerColors.inkNavyText,
-            ),
-          ),
-          const SizedBox(height: 14),
-          Divider(color: SealedLedgerColors.brassGold.withValues(alpha: 0.3), height: 1),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildParchmentDetail('ACCOUNT ID', '9876****4321'),
-              _buildParchmentDetail('DAILY LIMIT', 'Rs. 1,00,000'),
-              _buildParchmentDetail('RISK STATE', '0 / 100 (Safe)'),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildParchmentDetail(String label, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: SealedLedgerTheme.plexMono(fontSize: 10, color: SealedLedgerColors.parchmentMuted),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          value,
-          style: SealedLedgerTheme.plexMono(
-            fontSize: 11,
-            fontWeight: FontWeight.bold,
-            color: SealedLedgerColors.inkNavyText,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildActionRow() {
+  Widget _buildStatsRow() {
     return Row(
       children: [
-        Expanded(
-          child: _buildFlatBrassButton(
-            label: 'Send Money',
-            icon: Icons.north_east,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const SendMoneyScreen()),
-              );
-            },
-          ),
+        _statTile(
+          AppLanguage.t('scansToday'),
+          '${_stats.totalTransactions}',
+          Icons.shield_outlined,
+          AntivirusColors.forestGreen,
         ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: _buildFlatBrassButton(
-            label: 'Scan QR',
-            icon: Icons.qr_code_scanner,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const QrScannerScreen()),
-              );
-            },
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: _buildFlatBrassButton(
-            label: 'Security',
-            icon: Icons.shield,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const SecurityCenterScreen()),
-              );
-            },
-          ),
+        const SizedBox(width: 12),
+        _statTile(
+          AppLanguage.t('blockedToday'),
+          '${_stats.blockedToday}',
+          Icons.block,
+          AntivirusColors.deepCrimson,
         ),
       ],
     );
   }
 
-  Widget _buildFlatBrassButton({required String label, required IconData icon, required VoidCallback onTap}) {
-    return InkWell(
-      onTap: onTap,
+  Widget _statTile(String label, String value, IconData icon, Color color) {
+    return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: SealedLedgerColors.inkNavy,
-          borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: SealedLedgerColors.brassGold, width: 1.2),
+          color: AntivirusColors.softIvory,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AntivirusColors.borderSubtle),
         ),
-        child: Column(
-          children: [
-            Icon(icon, color: SealedLedgerColors.brassGold, size: 20),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: SealedLedgerTheme.plexMono(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                color: SealedLedgerColors.warmOffWhite,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLedgerRow(TransactionItem item) {
-    return InkWell(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => TransactionDetailScreen(item: item),
-          ),
-        );
-      },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 14.0),
         child: Row(
           children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 22),
+            ),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    item.title,
-                    style: SealedLedgerTheme.plexSans(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: SealedLedgerColors.warmOffWhite,
+                    value,
+                    style: AntivirusTheme.amount(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                      color: color,
                     ),
                   ),
-                  const SizedBox(height: 2),
                   Text(
-                    '${item.date} â€¢ ${item.type}',
-                    style: SealedLedgerTheme.plexMono(
-                      fontSize: 11,
-                      color: SealedLedgerColors.brassGold.withValues(alpha: 0.7),
+                    label,
+                    style: AntivirusTheme.body(
+                      fontSize: 14,
+                      color: AntivirusColors.textMuted,
                     ),
                   ),
                 ],
               ),
             ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  'Rs. ${item.amount.toStringAsFixed(2)}',
-                  style: SealedLedgerTheme.plexMono(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: SealedLedgerColors.warmOffWhite,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(width: 14),
-            // Signature Element: Verdict Stamp Seal
-            VerdictSeal.fromStatus(item.status, size: 36.0),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildDemoPresetsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          AppLanguage.t('demoPresets'),
+          style: AntivirusTheme.body(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: AntivirusColors.textMuted,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            _demoChip(
+              AppLanguage.t('safeDemo'),
+              AntivirusColors.forestGreen,
+              () => _launchDemo('rahul@okicici', '500', 'Mumbai, India'),
+            ),
+            const SizedBox(width: 8),
+            _demoChip(
+              AppLanguage.t('reviewDemo'),
+              AntivirusColors.amberOchre,
+              () => _launchDemo('newmerchant@upi', '8500', 'Unknown Location'),
+            ),
+            const SizedBox(width: 8),
+            _demoChip(
+              AppLanguage.t('blockDemo'),
+              AntivirusColors.deepCrimson,
+              () => _launchDemo('M999_SUSPICIOUS@upi', '15000', 'High Risk Region'),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _demoChip(String label, Color color, VoidCallback onTap) {
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: color.withValues(alpha: 0.4), width: 1.2),
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: AntivirusTheme.body(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _launchDemo(String recipient, String amount, String location) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SendMoneyScreen(
+          initialRecipient: recipient,
+          initialAmount: amount,
+          initialLocation: location,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRecentScansSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              AppLanguage.t('recentScans'),
+              style: AntivirusTheme.header(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            TextButton(
+              onPressed: () => setState(() => _currentIndex = 2),
+              child: Text(
+                '${AppLanguage.t('viewAll')} →',
+                style: AntivirusTheme.body(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AntivirusColors.forestGreen,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        if (_loading)
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.all(20),
+              child: CircularProgressIndicator(color: AntivirusColors.forestGreen),
+            ),
+          )
+        else
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: _recentTransactions.length,
+            separatorBuilder: (_, __) => Divider(
+              color: AntivirusColors.borderSubtle,
+              height: 1,
+            ),
+            itemBuilder: (_, i) => _buildTransactionRow(_recentTransactions[i]),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildTransactionRow(TransactionItem item) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      decoration: BoxDecoration(
+        color: AntivirusColors.softIvory,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AntivirusColors.borderSubtle),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        leading: ProtectionShield.fromStatus(item.status, size: 28),
+        title: Text(
+          item.title,
+          style: AntivirusTheme.body(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        subtitle: Text(
+          item.date,
+          style: AntivirusTheme.body(
+            fontSize: 13,
+            color: AntivirusColors.textMuted,
+          ),
+        ),
+        trailing: Text(
+          '₹${item.amount.toStringAsFixed(0)}',
+          style: AntivirusTheme.amount(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: AntivirusColors.inkText,
+          ),
+        ),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => TransactionDetailScreen(item: item)),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomNav() {
+    return NavigationBar(
+      selectedIndex: _currentIndex,
+      onDestinationSelected: (idx) => setState(() => _currentIndex = idx),
+      backgroundColor: AntivirusColors.softIvory,
+      indicatorColor: AntivirusColors.forestGreen.withValues(alpha: 0.15),
+      elevation: 4,
+      height: 68,
+      destinations: [
+        NavigationDestination(
+          icon: const Icon(Icons.home_outlined, color: AntivirusColors.inkText, size: 26),
+          selectedIcon: const Icon(Icons.home, color: AntivirusColors.forestGreen, size: 26),
+          label: AppLanguage.t('home'),
+        ),
+        NavigationDestination(
+          icon: const Icon(Icons.qr_code_scanner_outlined, color: AntivirusColors.inkText, size: 26),
+          selectedIcon: const Icon(Icons.qr_code_scanner, color: AntivirusColors.forestGreen, size: 26),
+          label: AppLanguage.t('payScan'),
+        ),
+        NavigationDestination(
+          icon: const Icon(Icons.history_outlined, color: AntivirusColors.inkText, size: 26),
+          selectedIcon: const Icon(Icons.history, color: AntivirusColors.forestGreen, size: 26),
+          label: AppLanguage.t('history'),
+        ),
+        NavigationDestination(
+          icon: const Icon(Icons.settings_outlined, color: AntivirusColors.inkText, size: 26),
+          selectedIcon: const Icon(Icons.settings, color: AntivirusColors.forestGreen, size: 26),
+          label: AppLanguage.t('settings'),
+        ),
+      ],
     );
   }
 }

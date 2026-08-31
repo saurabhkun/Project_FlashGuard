@@ -1,6 +1,7 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import '../theme/sealed_ledger_theme.dart';
+import '../theme/antivirus_theme.dart';
+import '../services/localization_service.dart';
 import 'send_money_screen.dart';
 
 class QrScannerScreen extends StatefulWidget {
@@ -27,15 +28,26 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
     if (_scanned) return;
     final List<Barcode> barcodes = capture.barcodes;
     for (final barcode in barcodes) {
-      if (barcode.rawValue != null) {
-        setState(() {
-          _scanned = true;
-        });
-        final String rawCode = barcode.rawValue!;
+      final rawValue = barcode.rawValue;
+      if (rawValue != null && rawValue.isNotEmpty) {
+        setState(() => _scanned = true);
+
+        String recipient = rawValue;
+        String? amount;
+
+        if (rawValue.startsWith('upi://pay')) {
+          final uri = Uri.parse(rawValue);
+          recipient = uri.queryParameters['pa'] ?? uri.queryParameters['pn'] ?? rawValue;
+          amount = uri.queryParameters['am'];
+        }
+
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => SendMoneyScreen(initialRecipient: rawCode),
+            builder: (_) => SendMoneyScreen(
+              initialRecipient: recipient,
+              initialAmount: amount,
+            ),
           ),
         );
         break;
@@ -46,22 +58,19 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: SealedLedgerColors.inkNavy,
+      backgroundColor: Colors.black,
       appBar: AppBar(
-        backgroundColor: SealedLedgerColors.inkNavy,
+        backgroundColor: Colors.black,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: SealedLedgerColors.warmOffWhite),
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'SCAN CERTIFIED UPI QR',
-          style: SealedLedgerTheme.plexMono(
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
-            color: SealedLedgerColors.brassGold,
-          ),
+          AppLanguage.t('payScan'),
+          style: AntivirusTheme.header(fontSize: 20, color: Colors.white),
         ),
+        centerTitle: true,
       ),
       body: Stack(
         children: [
@@ -69,26 +78,13 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
             controller: _controller,
             onDetect: _onDetect,
           ),
-          // Rubber Stamp Notch Frame Overlay
           Center(
             child: Container(
               width: 250,
               height: 250,
               decoration: BoxDecoration(
-                border: Border.all(color: SealedLedgerColors.brassGold, width: 2.5),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Stack(
-                children: [
-                  Positioned(
-                    top: 10,
-                    left: 10,
-                    child: Text(
-                      'SCANNING LEDGER QR...',
-                      style: SealedLedgerTheme.plexMono(fontSize: 10, color: SealedLedgerColors.brassGold),
-                    ),
-                  ),
-                ],
+                border: Border.all(color: AntivirusColors.forestGreen, width: 3),
+                borderRadius: BorderRadius.circular(16),
               ),
             ),
           ),
@@ -96,26 +92,16 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
             bottom: 40,
             left: 20,
             right: 20,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: SealedLedgerColors.inkNavy,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(4),
-                  side: const BorderSide(color: SealedLedgerColors.brassGold, width: 1.2),
-                ),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AntivirusColors.softIvory,
+                borderRadius: BorderRadius.circular(12),
               ),
-              onPressed: () {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const SendMoneyScreen(initialRecipient: 'merchant_qr@upi'),
-                  ),
-                );
-              },
               child: Text(
-                'SIMULATE TEST QR SCAN (MERCHANT@UPI)',
-                style: SealedLedgerTheme.plexMono(fontSize: 11, fontWeight: FontWeight.bold, color: SealedLedgerColors.warmOffWhite),
+                'Point camera at any UPI QR code to scan and verify payment security.',
+                textAlign: TextAlign.center,
+                style: AntivirusTheme.body(fontSize: 15, color: AntivirusColors.inkText),
               ),
             ),
           ),

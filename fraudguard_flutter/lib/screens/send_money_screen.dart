@@ -1,237 +1,107 @@
-﻿import 'package:flutter/material.dart';
-import '../models/transaction_model.dart';
+import 'package:flutter/material.dart';
+import '../theme/antivirus_theme.dart';
+import '../services/localization_service.dart';
 import '../services/api_service.dart';
-import '../services/biometric_service.dart';
-import '../theme/sealed_ledger_theme.dart';
-import '../widgets/verdict_seal.dart';
+import '../widgets/scan_pipeline_widget.dart';
+import 'result_screen.dart';
 
 class SendMoneyScreen extends StatefulWidget {
   final String? initialRecipient;
+  final String? initialAmount;
+  final String? initialLocation;
 
-  const SendMoneyScreen({super.key, this.initialRecipient});
+  const SendMoneyScreen({
+    super.key,
+    this.initialRecipient,
+    this.initialAmount,
+    this.initialLocation,
+  });
 
   @override
   State<SendMoneyScreen> createState() => _SendMoneyScreenState();
 }
 
-class _SendMoneyScreenState extends State<SendMoneyScreen> with SingleTickerProviderStateMixin {
-  final TextEditingController _recipientController = TextEditingController();
-  final TextEditingController _amountController = TextEditingController();
-  final String _txnType = 'TRANSFER';
-  bool _certifying = false;
-  RiskEvaluationResult? _riskResult;
+class _SendMoneyScreenState extends State<SendMoneyScreen> {
+  final _recipientController = TextEditingController();
+  final _amountController = TextEditingController();
+  final _locationController = TextEditingController();
 
-  late AnimationController _progressController;
-  late Animation<double> _progressAnim;
+  String _selectedType = 'TRANSFER';
+  bool _isScanning = false;
 
   @override
   void initState() {
     super.initState();
-    if (widget.initialRecipient != null) {
-      _recipientController.text = widget.initialRecipient!;
-    }
-
-    _progressController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    );
-    _progressAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _progressController, curve: Curves.easeInOut),
-    );
+    _recipientController.text = widget.initialRecipient ?? '';
+    _amountController.text = widget.initialAmount ?? '';
+    _locationController.text = widget.initialLocation ?? 'Mumbai, India';
   }
 
   @override
   void dispose() {
     _recipientController.dispose();
     _amountController.dispose();
-    _progressController.dispose();
+    _locationController.dispose();
     super.dispose();
   }
 
-  Future<void> _handleCertifyAndSubmit() async {
-    final String recipient = _recipientController.text.trim();
-    final double? amount = double.tryParse(_amountController.text.trim());
+  void _loadScenario(String recipient, String amount, String location) {
+    setState(() {
+      _recipientController.text = recipient;
+      _amountController.text = amount;
+      _locationController.text = location;
+      _isScanning = false;
+    });
+  }
+
+  void _startScanAndProtect() {
+    final recipient = _recipientController.text.trim();
+    final amountStr = _amountController.text.trim();
+    final amount = double.tryParse(amountStr);
 
     if (recipient.isEmpty || amount == null || amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          backgroundColor: SealedLedgerColors.brickRed,
+          backgroundColor: AntivirusColors.deepCrimson,
           content: Text(
-            'Invalid Entry: Please enter a valid recipient UPI handle and amount',
-            style: SealedLedgerTheme.plexMono(fontSize: 12, color: Colors.white),
+            'Please enter recipient details and a valid amount.',
+            style: AntivirusTheme.body(color: Colors.white),
           ),
         ),
       );
       return;
     }
 
-    setState(() {
-      _certifying = true;
-      _riskResult = null;
-    });
+    setState(() => _isScanning = true);
+  }
 
-    _progressController.reset();
-    _progressController.forward();
+  void _onScanComplete() async {
+    if (!mounted) return;
 
-    // 1. Send transaction payload to FraudGuard Backend
-    final evalResult = await ApiService.evaluateTransaction(
+    final recipient = _recipientController.text.trim();
+    final amount = double.tryParse(_amountController.text.trim()) ?? 0;
+    final location = _locationController.text.trim().isEmpty
+        ? 'Mumbai, India'
+        : _locationController.text.trim();
+
+    final result = await ApiService.evaluateTransaction(
       amount: amount,
       recipient: recipient,
-      type: _txnType,
+      type: _selectedType,
       oldBalanceOrg: 84500.0,
+      location: location,
     );
 
-    if (mounted) {
-      setState(() {
-        _certifying = false;
-        _riskResult = evalResult;
-      });
+    if (!mounted) return;
+    setState(() => _isScanning = false);
 
-      // 2. Evaluate Verdict
-      if (evalResult.decision == 'BLOCK' || evalResult.level == 'FRAUD') {
-        _showVerdictDialog(evalResult, amount, recipient, isBlocked: true);
-      } else {
-        // Check if biometric verification is needed
-        bool requireBiometrics = (evalResult.decision == 'REVIEW' || evalResult.riskScore > 25 || amount >= 25000);
-        if (requireBiometrics) {
-          _showBiometricStepUpDialog(evalResult, amount, recipient);
-        } else {
-          _showVerdictDialog(evalResult, amount, recipient, isBlocked: false);
-        }
-      }
-    }
-  }
-
-  void _showBiometricStepUpDialog(RiskEvaluationResult res, double amount, String recipient) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: SealedLedgerColors.ledgerParchment,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(4),
-          side: const BorderSide(color: SealedLedgerColors.brassGold, width: 1.5),
-        ),
-        title: Row(
-          children: [
-            const Icon(Icons.fingerprint, color: SealedLedgerColors.amberOchre, size: 24),
-            const SizedBox(width: 10),
-            Text(
-              'BIOMETRIC STEP-UP REQUIRED',
-              style: SealedLedgerTheme.plexMono(
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                color: SealedLedgerColors.inkNavyText,
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Risk Score ${res.riskScore}/100 requires user biometric confirmation.',
-              style: SealedLedgerTheme.plexSans(fontSize: 13, color: SealedLedgerColors.inkNavyText),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'REASONS: ${res.reasons.join(", ")}',
-              style: SealedLedgerTheme.plexMono(fontSize: 11, color: SealedLedgerColors.amberOchre),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('CANCEL', style: SealedLedgerTheme.plexMono(color: SealedLedgerColors.brickRed)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: SealedLedgerColors.inkNavy,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-            ),
-            onPressed: () async {
-              Navigator.pop(ctx);
-              final authSuccess = await BiometricService.authenticate(
-                reason: 'Confirm transaction of Rs. $amount to $recipient',
-              );
-              if (mounted) {
-                if (authSuccess) {
-                  _showVerdictDialog(res, amount, recipient, isBlocked: false);
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      backgroundColor: SealedLedgerColors.brickRed,
-                      content: Text('Biometric Authentication Failed', style: SealedLedgerTheme.plexMono(color: Colors.white)),
-                    ),
-                  );
-                }
-              }
-            },
-            child: Text('AUTHENTICATE', style: SealedLedgerTheme.plexMono(color: SealedLedgerColors.warmOffWhite)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showVerdictDialog(RiskEvaluationResult res, double amount, String recipient, {required bool isBlocked}) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: SealedLedgerColors.ledgerParchment,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(4),
-          side: const BorderSide(color: SealedLedgerColors.brassGold, width: 1.5),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 10),
-            // Stamp Animation
-            VerdictSeal.fromStatus(res.level, size: 100.0, animate: true),
-            const SizedBox(height: 16),
-            Text(
-              isBlocked ? 'TRANSACTION TERMINATED' : 'TRANSACTION CERTIFIED',
-              style: SealedLedgerTheme.frauncesHeader(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: isBlocked ? SealedLedgerColors.brickRed : SealedLedgerColors.mossGreen,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Rs. ${amount.toStringAsFixed(2)} to $recipient',
-              style: SealedLedgerTheme.plexMono(fontSize: 14, fontWeight: FontWeight.bold, color: SealedLedgerColors.inkNavyText),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'RISK SCORE: ${res.riskScore} / 100',
-              style: SealedLedgerTheme.plexMono(fontSize: 12, fontWeight: FontWeight.bold, color: SealedLedgerColors.brassGold),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              res.reasons.join('\n'),
-              style: SealedLedgerTheme.plexMono(fontSize: 11, color: SealedLedgerColors.parchmentMuted),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: SealedLedgerColors.inkNavy,
-                minimumSize: const Size(double.infinity, 44),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-              ),
-              onPressed: () {
-                Navigator.pop(ctx);
-                Navigator.pop(context);
-              },
-              child: Text('CLOSE LEDGER ENTRY', style: SealedLedgerTheme.plexMono(color: SealedLedgerColors.warmOffWhite)),
-            ),
-          ],
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ResultScreen(
+          result: result,
+          amount: amount,
+          recipient: recipient,
         ),
       ),
     );
@@ -239,129 +109,221 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> with SingleTickerProv
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: SealedLedgerColors.inkNavy,
-      appBar: AppBar(
-        backgroundColor: SealedLedgerColors.inkNavy,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: SealedLedgerColors.warmOffWhite),
-          onPressed: () => Navigator.pop(context),
+    final lang = AppLanguage();
+
+    return AnimatedBuilder(
+      animation: lang,
+      builder: (_, __) {
+        return Scaffold(
+          backgroundColor: AntivirusColors.warmBeige,
+          appBar: AppBar(
+            backgroundColor: AntivirusColors.warmBeige,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_ios, color: AntivirusColors.inkText, size: 20),
+              onPressed: () => Navigator.pop(context),
+            ),
+            title: Text(
+              AppLanguage.t('payScan'),
+              style: AntivirusTheme.header(fontSize: 20, fontWeight: FontWeight.w600),
+            ),
+            centerTitle: true,
+          ),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Demo presets
+                if (!_isScanning) _buildDemoScenarios(),
+                if (!_isScanning) const SizedBox(height: 20),
+
+                // Form or Scan pipeline
+                if (_isScanning)
+                  AntivirusScanWidget(onComplete: _onScanComplete)
+                else
+                  _buildFormCard(),
+
+                const SizedBox(height: 24),
+
+                if (!_isScanning) _buildScanButton(),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDemoScenarios() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          AppLanguage.t('demoPresets'),
+          style: AntivirusTheme.body(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: AntivirusColors.textMuted,
+          ),
         ),
-        title: Text(
-          'NEW LEDGER ENTRY',
-          style: SealedLedgerTheme.plexMono(
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
-            color: SealedLedgerColors.brassGold,
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            _chip(AppLanguage.t('safeDemo'), AntivirusColors.forestGreen,
+                () => _loadScenario('rahul@okicici', '500', 'Mumbai, India')),
+            const SizedBox(width: 8),
+            _chip(AppLanguage.t('reviewDemo'), AntivirusColors.amberOchre,
+                () => _loadScenario('newmerchant@upi', '8500', 'Unknown Location')),
+            const SizedBox(width: 8),
+            _chip(AppLanguage.t('blockDemo'), AntivirusColors.deepCrimson,
+                () => _loadScenario('M999_SUSPICIOUS@upi', '15000', 'High Risk Region')),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _chip(String label, Color color, VoidCallback onTap) {
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: color.withValues(alpha: 0.4), width: 1),
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: AntivirusTheme.body(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
           ),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
+    );
+  }
+
+  Widget _buildFormCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AntivirusColors.softIvory,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AntivirusColors.borderSubtle),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _fieldLabel(AppLanguage.t('recipientLabel')),
+          const SizedBox(height: 6),
+          _inputField(
+            _recipientController,
+            hint: 'e.g. 9876543210 or merchant@upi',
+            icon: Icons.person_outline,
+          ),
+
+          const SizedBox(height: 18),
+
+          _fieldLabel(AppLanguage.t('amountLabel')),
+          const SizedBox(height: 6),
+          _inputField(
+            _amountController,
+            hint: '0',
+            icon: Icons.currency_rupee,
+            keyboardType: TextInputType.number,
+            isAmount: true,
+          ),
+
+          const SizedBox(height: 18),
+
+          _fieldLabel(AppLanguage.t('locationLabel')),
+          const SizedBox(height: 6),
+          _inputField(
+            _locationController,
+            hint: 'Mumbai, India',
+            icon: Icons.location_on_outlined,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _fieldLabel(String label) {
+    return Text(
+      label,
+      style: AntivirusTheme.body(
+        fontSize: 15,
+        fontWeight: FontWeight.w600,
+        color: AntivirusColors.inkText,
+      ),
+    );
+  }
+
+  Widget _inputField(
+    TextEditingController controller, {
+    required String hint,
+    required IconData icon,
+    TextInputType? keyboardType,
+    bool isAmount = false,
+  }) {
+    return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      style: isAmount
+          ? AntivirusTheme.amount(fontSize: 24, color: AntivirusColors.inkText)
+          : AntivirusTheme.body(fontSize: 16, color: AntivirusColors.inkText),
+      decoration: InputDecoration(
+        prefixIcon: Icon(icon, color: AntivirusColors.forestGreen),
+        hintText: hint,
+        filled: true,
+        fillColor: AntivirusColors.warmBeige,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: AntivirusColors.borderSubtle),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: AntivirusColors.borderSubtle),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: AntivirusColors.forestGreen, width: 2),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildScanButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 54,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AntivirusColors.forestGreen,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          elevation: 0,
+        ),
+        onPressed: _startScanAndProtect,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Parchment Form Sheet
-            Container(
-              padding: const EdgeInsets.all(22),
-              decoration: BoxDecoration(
-                color: SealedLedgerColors.ledgerParchment,
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: SealedLedgerColors.brassGold, width: 1.5),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'PAYMENT SPECIFICATION',
-                    style: SealedLedgerTheme.plexMono(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: SealedLedgerColors.brassGold,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Recipient Field
-                  Text('Recipient UPI Handle', style: SealedLedgerTheme.plexSans(fontSize: 12, color: SealedLedgerColors.inkNavyText)),
-                  const SizedBox(height: 6),
-                  TextField(
-                    controller: _recipientController,
-                    style: SealedLedgerTheme.plexMono(color: SealedLedgerColors.inkNavyText),
-                    decoration: InputDecoration(
-                      hintText: 'e.g. merchant@upi or M999_SUSPICIOUS',
-                      hintStyle: SealedLedgerTheme.plexMono(fontSize: 12, color: SealedLedgerColors.parchmentMuted),
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(4), borderSide: const BorderSide(color: SealedLedgerColors.brassGold)),
-                    ),
-                  ),
-
-                  const SizedBox(height: 18),
-
-                  // Amount Field
-                  Text('Amount (INR)', style: SealedLedgerTheme.plexSans(fontSize: 12, color: SealedLedgerColors.inkNavyText)),
-                  const SizedBox(height: 6),
-                  TextField(
-                    controller: _amountController,
-                    keyboardType: TextInputType.number,
-                    style: SealedLedgerTheme.plexMono(fontSize: 18, fontWeight: FontWeight.bold, color: SealedLedgerColors.inkNavyText),
-                    decoration: InputDecoration(
-                      prefixText: 'Rs. ',
-                      prefixStyle: SealedLedgerTheme.plexMono(fontSize: 18, fontWeight: FontWeight.bold, color: SealedLedgerColors.brassGold),
-                      hintText: '0.00',
-                      hintStyle: SealedLedgerTheme.plexMono(fontSize: 18, color: SealedLedgerColors.parchmentMuted),
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(4), borderSide: const BorderSide(color: SealedLedgerColors.brassGold)),
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Progress / Certifying State
-                  if (_certifying) ...[
-                    Text(
-                      'CERTIFYING TRANSACTION WITH FRAUDGUARD ML...',
-                      style: SealedLedgerTheme.plexMono(fontSize: 10, fontWeight: FontWeight.bold, color: SealedLedgerColors.brassGold),
-                    ),
-                    const SizedBox(height: 8),
-                    // Thin brass line filling left-to-right
-                    AnimatedBuilder(
-                      animation: _progressAnim,
-                      builder: (context, child) {
-                        return LinearProgressIndicator(
-                          value: _progressAnim.value,
-                          minHeight: 3,
-                          backgroundColor: SealedLedgerColors.brassGold.withValues(alpha: 0.2),
-                          valueColor: const AlwaysStoppedAnimation<Color>(SealedLedgerColors.brassGold),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-
-                  // Submit Action Button
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: SealedLedgerColors.inkNavy,
-                      minimumSize: const Size(double.infinity, 48),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(4),
-                        side: const BorderSide(color: SealedLedgerColors.brassGold, width: 1.2),
-                      ),
-                    ),
-                    onPressed: _certifying ? null : _handleCertifyAndSubmit,
-                    child: Text(
-                      'CERTIFY & EXECUTE PAYMENT',
-                      style: SealedLedgerTheme.plexMono(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: SealedLedgerColors.warmOffWhite,
-                      ),
-                    ),
-                  ),
-                ],
+            const Icon(Icons.shield_outlined, size: 22),
+            const SizedBox(width: 10),
+            Text(
+              AppLanguage.t('analyzeBtn'),
+              style: AntivirusTheme.body(
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
               ),
             ),
           ],
