@@ -81,8 +81,17 @@ emulator's loopback address that maps to the host machine's `127.0.0.1`.
 
 ## 📱 App Screens
 
+| 1. Login Screen | 2. Home Dashboard |
+| :---: | :---: |
+| <img src="../login.png" width="340" alt="Login Screen" /> | <img src="../dashboard.png" width="340" alt="Dashboard Screen" /> |
+
+| 3. Payment Scan | 4. Security Center |
+| :---: | :---: |
+| <img src="../interface.png" width="340" alt="Payment Scan Interface" /> | <img src="../parameters.png" width="340" alt="Parameters and Diagnostics" /> |
+
 | Screen | Description |
 |--------|-------------|
+| **Login** | Bilingual Phone & OTP authentication screen |
 | **Splash** | Animated shield logo, backend health check, "FraudGuard AI ONLINE" |
 | **Home** | Protection status, today's stats, recent transactions, demo scenario shortcuts |
 | **Send Money** | SAFE / REVIEW / BLOCK demo presets, 7-stage FraudGuard pipeline animation |

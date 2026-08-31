@@ -37,6 +37,20 @@ Prints 14 empirical claims with their **measured** runtime values and exits non-
 
 ---
 
+## 📸 Application Screenshots
+
+| 1. Phone + OTP Login | 2. Live Protection Dashboard |
+| :---: | :---: |
+| <img src="login.png" width="380" alt="Phone OTP Login Screen" /> | <img src="dashboard.png" width="380" alt="Protection Dashboard" /> |
+| *Bilingual Phone & OTP Authentication* | *Real-Time Shield Status & Scan Stats* |
+
+| 3. Payment Scanning Interface | 4. Security Engine Parameters |
+| :---: | :---: |
+| <img src="interface.png" width="380" alt="Payment Scanning Interface" /> | <img src="parameters.png" width="380" alt="Security Engine Diagnostics" /> |
+| *Pre-Settlement Threat Interception* | *11-Layer Rule Matrix & ML Diagnostics* |
+
+---
+
 ## ⚡ The Problem & The Solution
 
 India lost over **₹22,495 Crore to digital payment fraud in 2025**. Existing bank security systems evaluate transactions asynchronously *after* the settlement has completed — running batch fraud analysis hours later when funds have already been laundered.
