@@ -13,7 +13,6 @@ class SecurityCenterScreen extends StatefulWidget {
 
 class _SecurityCenterScreenState extends State<SecurityCenterScreen> {
   HealthStatus? _health;
-  DashboardStats _stats = DashboardStats.empty();
   bool _loading = true;
 
   @override
@@ -24,11 +23,9 @@ class _SecurityCenterScreenState extends State<SecurityCenterScreen> {
 
   Future<void> _load() async {
     final health = await ApiService.checkHealth();
-    final stats = await ApiService.getDashboardStats();
     if (mounted) {
       setState(() {
         _health = health;
-        _stats = stats;
         _loading = false;
       });
     }

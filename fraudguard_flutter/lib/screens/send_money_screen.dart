@@ -26,7 +26,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
   final _amountController = TextEditingController();
   final _locationController = TextEditingController();
 
-  String _selectedType = 'TRANSFER';
+  final String _selectedType = 'TRANSFER';
   bool _isScanning = false;
 
   @override
