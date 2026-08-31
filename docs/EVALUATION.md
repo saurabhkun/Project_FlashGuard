@@ -41,8 +41,8 @@ Below is the exhaustive audit of all 14 claims asserted in [`README.md`](../READ
 - **Proof File**: [`backend/build_fraudguard_model.py`](file:///d:/study%20man/projects/Project_FlashGuard/backend/build_fraudguard_model.py)
 
 ### Claim 5: Zero Data Leakage & Feature Selection
-- **Statement**: Exactly 100 features selected; target label `F3912` explicitly excluded from predictors.
-- **Measured Value**: `len(features) == 100` and `'F3912' not in features`.
+- **Statement**: Exactly 100 features selected; target label `F3924` and leakage column `F3912` explicitly excluded from predictor features by `CustomPreprocessor`.
+- **Measured Value**: `len(features) == 100`, `'F3924' not in features`, and `'F3912' not in features`.
 - **Proof File**: [`backend/ml_adapter.py`](file:///d:/study%20man/projects/Project_FlashGuard/backend/ml_adapter.py)
 
 ### Claim 6: Cryptographic Production Freeze Hash
