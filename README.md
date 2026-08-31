@@ -1,4 +1,4 @@
-# FLASHGUARD PRO (फ्लैशगार्ड प्रो) 🛡️
+# FLASHGUARD PRO 🛡️
 
 **Real-Time Antivirus Protection for Digital Payments & Financial Scams in India.**  
 *Sub-30ms Real-Time Pre-Settlement Scanning · 100% ROC-AUC Benchmark · 11-Layer Security Engine · Low-Literacy Accessible Flutter UI · Full Stack Solution*
