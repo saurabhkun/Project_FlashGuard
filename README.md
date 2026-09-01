@@ -118,11 +118,18 @@ FlashGuard Pro introduces a familiar mental model: **payment antivirus software*
 * **Zero Data Leakage Verification**: Target label `F3924` and secondary leakage proxy `F3912` are explicitly purged from input predictor space.
 * **Decommissioned Legacy Models**: Legacy PaySim models are 100% disabled.
 
-### 3. ⚡ High-Throughput Sub-50ms Inference Engine
+### 3. 🤖 Machine Learning Algorithm: Calibrated Random Forest Ensemble
+To avoid the brittleness of over-specialized deep trees on the 81-sample fraud cluster, FlashGuard Pro employs a **Sigmoid-Calibrated Random Forest**:
+* **Base Classifier**: `RandomForestClassifier` with constrained depth (`max_depth=6`, `min_samples_leaf=3`, `n_estimators=100`, `class_weight='balanced'`) to prevent leaf memorization.
+* **Probability Calibration**: `CalibratedClassifierCV(method='sigmoid', cv=3)` (Platt Scaling) transforms raw tree votes into reliable posterior probabilities $P(\text{Fraud} \mid X)$.
+* **Feature Selection**: Top 25 pure numeric features selected strictly from `X_train` using Gini importance.
+* **Coverage-Attenuated ML Fusion**: When incoming transactions arrive from mobile devices without high-dimensional telemetry, the ML anomaly signal is smoothly scaled ($\le 35\text{ pts}$) rather than falsely triggering on missing fields.
+
+### 4. ⚡ High-Throughput Sub-50ms Inference Engine
 * **Real-Time Response**: Measured ML inference latency is **~3.8 ms** (API roundtrip $<5\text{ ms}$), well within the payment settlement threshold.
 * **Coverage-Attenuated Scaling**: For mobile payloads lacking raw high-dimensional telemetry, the ML score is smoothly attenuated so normal ₹500 transactions are never falsely blocked.
 
-### 4. 🧠 7-Layer Deterministic & Behavioral Security Matrix
+### 5. 🧠 7-Layer Deterministic & Behavioral Security Matrix
 Integrates coverage-attenuated ML probability (0–35 pts) with 7 core heuristic layers:
 1. **Dynamic Amount Deviation (0–25 pts)**: Flags transfers $>4\times, >10\times, >20\times$ user average.
 2. **Velocity Spike (0–20 pts)**: Flags $\ge 2$ or $\ge 4$ high-value transfers in 5 minutes.
@@ -132,7 +139,7 @@ Integrates coverage-attenuated ML probability (0–35 pts) with 7 core heuristic
 6. **Temporal Window (0–5 pts)**: Flags abnormal late-night transactions (2 AM – 5 AM).
 7. **Multi-Vector Threat Synergy (+15 pts)**: Accelerates risk score to BLOCK when $\ge 3$ critical vectors trigger.
 
-### 5. 📱 Multi-Platform Frontends & Antivirus Redesign
+### 6. 📱 Multi-Platform Frontends & Antivirus Redesign
 * **Flutter Mobile App (`fraudguard_flutter`)**: Redesigned around the **Antivirus for Payments** mental model:
   * **Warm Beige Visual Theme**: Relaxed, calm palette (`warmBeige` `#EDE6D6`, `softIvory` `#F7F3EA`, `forestGreen` `#2F5233`, `amberOchre` `#C68A2E`, `deepCrimson` `#8C2F2F`, `inkText` `#2B2620`).
   * **Low-Literacy Accessibility**: Generous 48x48dp minimum tap targets, 16sp+ body text, 4-item bottom navigation, and icon + text label pairing on every control.
