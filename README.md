@@ -1,39 +1,38 @@
 # FLASHGUARD PRO 🛡️
 
 **Real-Time Antivirus Protection for Digital Payments & Financial Scams in India.**  
-*Sub-30ms Real-Time Pre-Settlement Scanning · 100% ROC-AUC Benchmark · 11-Layer Security Engine · Low-Literacy Accessible Flutter UI · Full Stack Solution*
+*Sub-50ms Real-Time Pre-Settlement Scanning · Calibrated ML Statistical Signal (0.933 Holdout ROC-AUC) · 7-Layer Behavioral Risk Engine · Low-Literacy Accessible Flutter UI · Full Stack Solution*
 
 [![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen?style=flat-square)](https://github.com/saurabhkun/Project_FlashGuard)
-[![Inference Latency](https://img.shields.io/badge/Measured_Latency-1.51ms_(SLA_%3C30ms)-blue?style=flat-square)](#-ml-model-benchmarks--audit)
-[![Model Accuracy](https://img.shields.io/badge/ROC_AUC-1.0000-orange?style=flat-square)](#-ml-model-benchmarks--audit)
+[![Inference Latency](https://img.shields.io/badge/Measured_Latency-Sub--50ms_(SLA_%3C60ms)-blue?style=flat-square)](#-ml-model-benchmarks--audit)
+[![Model Version](https://img.shields.io/badge/Model_Version-v2--Hybrid-purple?style=flat-square)](#-ml-model-benchmarks--audit)
+[![Holdout ROC-AUC](https://img.shields.io/badge/Holdout_ROC_AUC-0.9330-orange?style=flat-square)](#-ml-model-benchmarks--audit)
 [![Dataset Provenance](https://img.shields.io/badge/Dataset_Source-Bank_of_India_%7C_IIT_Hyderabad_Hackathon-teal?style=flat-square)](#-ml-model-benchmarks--audit)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=flat-square)](LICENSE)
 
 ---
 
-## 🏛️ Official Dataset Provenance Notice
+## 🏛️ Official Dataset Provenance & Engineering Notice
 
-> **The primary dataset (`DataSet.csv`) powering FlashGuard Pro was officially provided by the Bank of India during the selection round of their prestigious Hackathon hosted at IIT Hyderabad (IIT Hyd).**  
-> It comprises **9,082 verified financial transaction records** with **3,925 raw feature dimensions**, pruned to the **top 100 most predictive features** for sub-30ms real-time inference.
+> **The primary benchmark dataset (`DataSet.csv`) powering FlashGuard Pro was officially provided by the Bank of India during the selection round of their Hackathon hosted at IIT Hyderabad (IIT Hyd).**  
+> It comprises **9,082 verified financial transaction records** with **3,925 raw feature dimensions** (81 fraud records, 9,001 legitimate records). In our v2 pipeline, we pruned these to the **Top 25 purely numeric, high-information features** strictly fitted on training splits, eliminating all target leakage (`F3912` and `F3924`).
 
 ---
 
-## ✅ Verify every claim in this README — one command, no setup
+## ✅ Verify Every Claim in this Repository — One Command
 
 ```bash
 python scripts/verify_claims.py
 ```
 *(On Linux/macOS: `./scripts/verify-claims.sh` | On Windows: `scripts\verify-claims.bat`)*
 
-Prints 14 empirical claims with their **measured** runtime values and exits non-zero if any single claim fails: model SHA256 freeze hash, sub-30ms latency SLA, Bank of India dataset feature rules, 11-layer hybrid risk fusion, and test suite verification. Takes less than 5 seconds.
-
-**[`docs/EVALUATION.md`](docs/EVALUATION.md) maps every hackathon judging criterion to the exact file or command that proves it** — including an honest breakdown of active vs. decommissioned modules. If a number anywhere disagrees with that file, that file is right.
+Automated test runner prints all 14 empirical claims with their **measured** runtime values: model SHA256 freeze hash, sub-50ms latency SLA, Bank of India dataset feature rules, 7-layer hybrid risk fusion, and test suite verification.
 
 ---
 
 ## 🎯 The Pitch in One Line
 
-> **Think Norton or McAfee, but for your money instead of your files — FlashGuard Pro is an antivirus for digital payments that scans transactions in 1.51 ms and stops financial scams before the money leaves your phone.**
+> **Think Norton or McAfee, but for your money instead of your files — FlashGuard Pro is an antivirus for digital payments that scans transactions in real time and stops financial scams before the money leaves your phone.**
 
 ---
 
@@ -44,10 +43,10 @@ Prints 14 empirical claims with their **measured** runtime values and exits non-
 | <img src="login.png" width="380" alt="Phone OTP Login Screen" /> | <img src="dashboard.png" width="380" alt="Protection Dashboard" /> |
 | *Bilingual Phone & OTP Authentication* | *Real-Time Shield Status & Scan Stats* |
 
-| 3. Payment Scanning Interface | 4. Security Engine Parameters |
+| 3. Payment Scanning Interface | 4. Security Engine Diagnostics |
 | :---: | :---: |
 | <img src="interface.png" width="380" alt="Payment Scanning Interface" /> | <img src="parameters.png" width="380" alt="Security Engine Diagnostics" /> |
-| *Pre-Settlement Threat Interception* | *11-Layer Rule Matrix & ML Diagnostics* |
+| *Pre-Settlement Threat Interception* | *7-Layer Rule Matrix & ML Diagnostics* |
 
 ---
 
@@ -60,16 +59,16 @@ Coercive scams like **"Digital Arrest" extortion calls** specifically exploit in
 ### The Solution: Pre-Settlement Payment Antivirus
 FlashGuard Pro introduces a familiar mental model: **payment antivirus software**. Just like antivirus software scans a file before you open it, FlashGuard Pro scans payment payloads in real-time before money settles:
 
-1. **Pre-Settlement Interception**: Scans every transaction in **~1.51 ms**, well within payment settlement windows.
+1. **Pre-Settlement Interception**: Scans every transaction in **< 50 ms**, well within payment settlement windows.
 2. **Accessible for Everyone**: Built specifically for low digital literacy — warm beige visual design, zero jargon, clear **ProtectionShield** indicators, and bilingual English/Hindi UI.
-3. **Hybrid Security Engine**: Merges machine learning trained on Bank of India dataset with 11 deterministic rule layers (velocity spikes, geographic impossibility, mule account matching, balance drain detection).
+3. **Hybrid Security Engine**: Merges a calibrated machine learning anomaly signal (0–35 pts) with 7 deterministic behavioral security layers (spending deviation, velocity spikes, geographic impossibility, mule account matching, balance drain detection).
 
 ---
 
 ```
                                   FLASHGUARD PRO LIVE PROTECTION PIPELINE
 ┌───────────────────────────┐       ┌────────────────────────────┐       ┌───────────────────────────────────┐
-│  Payment Transaction Feed │ ────► │ FastAPI Async API Server   │ ────► │  Top 100 Selected Features        │
+│  Payment Transaction Feed │ ────► │ FastAPI Async API Server   │ ────► │  Top 25 Selected Numeric Features │
 │ (Flutter Mobile App)      │       │ (CORS + Rate-Limiting)     │       │  (Bank of India IIT Hyd Dataset)  │
 └───────────────────────────┘       └────────────────────────────┘       └─────────────────┬─────────────────┘
                                                                                            │
@@ -77,10 +76,11 @@ FlashGuard Pro introduces a familiar mental model: **payment antivirus software*
                                   │                                                                           │
                                   ▼                                                                           ▼
                    ┌──────────────────────────────┐                            ┌──────────────────────────────┐
-                   │ Tier 1: FraudGuard ML Model  │                            │ Tier 2: 11-Layer Rule Matrix │
-                   │ • HistGradientBoosting       │                            │ • Amount & Balance Anomaly   │
-                   │ • 1.51 ms Latency SLA        │                            │ • Velocity & Geo-Fence       │
-                   │ • 1.0000 ROC-AUC & F1 Score  │                            │ • Mule Account & Device Check│
+                   │ Tier 1: FraudGuard v2 ML     │                            │ Tier 2: 7-Layer Behavioral   │
+                   │ • Calibrated Random Forest   │                            │ • Dynamic Amount Deviation   │
+                   │ • Coverage-Attenuated Score  │                            │ • Velocity Burst Detection   │
+                   │ • 0.9330 Holdout ROC-AUC     │                            │ • Impossible Travel & Mule   │
+                   │ • 0 - 35 points max          │                            │ • 0 - 65 points max          │
                    └──────────────┬───────────────┘                            └──────────────┬───────────────┘
                                   │                                                           │
                                   └───────────────────────────┬───────────────────────────────┘
@@ -88,21 +88,21 @@ FlashGuard Pro introduces a familiar mental model: **payment antivirus software*
                                                               ▼
                                                ┌──────────────────────────────┐
                                                │ Fused Hybrid Risk Engine     │
-                                               │ Score: 0 ─── 40 ─── 70 ─── 100│
+                                               │ Score: 0 ─── 40 ─── 80 ─── 100│
                                                └──────────────┬───────────────┘
                                                               │
                                                               ▼
                                                ┌──────────────────────────────┐
-                                               │ Real-Time Decision           │
-                                               │ CLEAN & SAFE ➔ UNDER REVIEW  │
-                                               │ ➔ QUARANTINED (STOPPED)      │
+                                               │ Real-Time Verdict            │
+                                               │ SAFE (0-40) ➔ REVIEW (41-80) │
+                                               │ ➔ BLOCK (81-100)             │
                                                └──────────────┬───────────────┘
                                                               │
                                                               ▼
                                                ┌──────────────────────────────┐
                                                │ SQLite Ledger + WebSocket    │
                                                │ Live Stream Broadcast        │
-                                               └──────────────┬───────────────┘
+                                               └──────────────────────────────┘
 ```
 
 ---
@@ -111,25 +111,26 @@ FlashGuard Pro introduces a familiar mental model: **payment antivirus software*
 
 ### 1. 🏛️ Trained on Bank of India (IIT Hyderabad) Dataset
 * **Official Hackathon Corpus**: Built using the official selection round dataset (`DataSet.csv`) provided by **Bank of India** at **IIT Hyderabad**.
-* **High-Dimensional Feature Mining**: Evaluates 3,925 raw features, filtered to 100 non-redundant feature predictors.
+* **High-Dimensional Feature Mining**: Evaluates 3,925 raw features, pruned to 25 pure numeric, high-information features strictly on `X_train`.
 
 ### 2. 🔒 Cryptographic Model Freeze & Zero Data Leakage
-* **SHA256 Model Verification**: The active production model `backend/fraudguard_model.pkl` is cryptographically frozen (`f23a869a5e516c53b2b4185c809151b771761ebe4c002f1f6b49aa05905472f0`). Any tampering causes immediate startup failure. Certified in [`backend/MODEL_FREEZE.md`](backend/MODEL_FREEZE.md).
-* **Zero Data Leakage Verification**: Target label `F3924` and secondary leakage column `F3912` are explicitly stripped from input predictor space by `CustomPreprocessor` in [`backend/ml_adapter.py`](backend/ml_adapter.py). Neither appears in the 100 selected feature vectors.
-* **Decommissioned Legacy Models**: Legacy PaySim models are 100% disabled to prevent model version confusion.
+* **SHA256 Model Verification**: The active production model `backend/fraudguard_model.pkl` is cryptographically frozen (`3f264611418b639614a2d618f696768fd8b9593c7efcf3ff9e43c451de249d94`). Any tampering causes immediate startup failure. Certified in [`backend/MODEL_FREEZE.md`](backend/MODEL_FREEZE.md).
+* **Zero Data Leakage Verification**: Target label `F3924` and secondary leakage proxy `F3912` are explicitly purged from input predictor space.
+* **Decommissioned Legacy Models**: Legacy PaySim models are 100% disabled.
 
-### 3. ⚡ High-Throughput Sub-30ms Inference Engine
-* **Super-Fast Response**: Measured inference latency of **1.51 ms average** (p95: 3.30 ms), well within the 30 ms real-time payment settlement threshold.
-* **Automated Imputation**: Handles partial transaction payloads effortlessly via median baseline imputation.
+### 3. ⚡ High-Throughput Sub-50ms Inference Engine
+* **Real-Time Response**: Measured ML inference latency is **~3.8 ms** (API roundtrip $<5\text{ ms}$), well within the payment settlement threshold.
+* **Coverage-Attenuated Scaling**: For mobile payloads lacking raw high-dimensional telemetry, the ML score is smoothly attenuated so normal ₹500 transactions are never falsely blocked.
 
-### 4. 🧠 11-Layer Deterministic & Behavioral Security Matrix
-Integrates ML probability (0–85 pts) with 6 core rule categories:
-1. **Amount Anomaly**: Flags transfers $> 5\times$ user average or $> 75\%$ account balance.
-2. **Velocity Spike**: Flags $> 3$ high-value transfers in 5 minutes.
-3. **Geographic Anomaly**: Detects impossible travel speeds ($> 500\text{ km/h}$).
-4. **Device Integrity**: Flags unrecognized hardware IDs.
-5. **Recipient Scoring**: Checks recipient UPI handles against known mule registries (`M999`, `MULE`).
-6. **Time-of-Day Risk**: Weighting for unusual late-night activity.
+### 4. 🧠 7-Layer Deterministic & Behavioral Security Matrix
+Integrates coverage-attenuated ML probability (0–35 pts) with 7 core heuristic layers:
+1. **Dynamic Amount Deviation (0–25 pts)**: Flags transfers $>4\times, >10\times, >20\times$ user average.
+2. **Velocity Spike (0–20 pts)**: Flags $\ge 2$ or $\ge 4$ high-value transfers in 5 minutes.
+3. **Geographic Anomaly (0–20 pts)**: Detects impossible travel speeds ($>500\text{ km/h}$) and high-risk regions.
+4. **Recipient Mule & Account Drain (0–25 pts)**: Matches against known mule registries (`M999`, `MULE`) and balance drain $>75\%$.
+5. **Device Integrity (0–15 pts)**: Flags unrecognized hardware IDs or emulator fingerprints.
+6. **Temporal Window (0–5 pts)**: Flags abnormal late-night transactions (2 AM – 5 AM).
+7. **Multi-Vector Threat Synergy (+15 pts)**: Accelerates risk score to BLOCK when $\ge 3$ critical vectors trigger.
 
 ### 5. 📱 Multi-Platform Frontends & Antivirus Redesign
 * **Flutter Mobile App (`fraudguard_flutter`)**: Redesigned around the **Antivirus for Payments** mental model:
@@ -138,23 +139,24 @@ Integrates ML probability (0–85 pts) with 6 core rule categories:
   * **ProtectionShield Status System**: Triple-signal status verification (Color + Icon Shape + Text Tag: **CLEAN & SAFE**, **UNDER REVIEW**, **QUARANTINED**).
   * **Bilingual Support**: Instant English & Hindi UI translation toggle powered by [`lib/services/localization_service.dart`](fraudguard_flutter/lib/services/localization_service.dart).
   * **Demo Phone + OTP Login**: UPI-style 6-digit OTP verification flow ([`lib/screens/demo_login_screen.dart`](fraudguard_flutter/lib/screens/demo_login_screen.dart)), clearly labeled for demonstration.
-  * **App Logo**: Custom geometric shield + ₹ mark logo widget ([`lib/widgets/flashguard_logo.dart`](fraudguard_flutter/lib/widgets/flashguard_logo.dart)).
-* **FastAPI Backend API & WebSocket Broadcast**: Real-time alert streamer pushing risk events live over WebSockets.
+* **FastAPI Backend API & WebSocket Broadcast**: Real-time alert streamer pushing risk events live over WebSockets (`ws://127.0.0.1:8000/ws/alerts`).
 
 ---
 
-## 📊 ML Model Benchmarks & Audit
+## 📊 ML Model Benchmarks & Forensic Audit
 
-| Metric | Measured Value | Target / SLA | Audit Proof Command |
-| :--- | :---: | :---: | :--- |
-| **Model SHA256** | `f23a869a...` | Matches Freeze Manifest | `python backend/final_verify.py` |
-| **Inference Latency** | **1.51 ms** | $< 30.00\text{ ms}$ | `python scripts/verify_claims.py` |
-| **ROC-AUC Score** | **1.0000** | $\ge 0.9900$ | `python backend/test_model.py` |
-| **PR-AUC Score** | **1.0000** | $\ge 0.9900$ | `python backend/test_model.py` |
-| **F1 Score** | **1.0000** | $\ge 0.9900$ | `python backend/test_model.py` |
-| **Data Leakage Check** | **PASSED** | Target `F3924` & `F3912` Excluded | `python scripts/verify_claims.py` |
+| Metric | Measured Value | Benchmark Description | Audit Proof Command |
+| :--- | :---: | :--- | :--- |
+| **Model SHA256** | `3f264611...` | Active production freeze hash | `python backend/final_verify.py` |
+| **Inference Latency** | **~3.8 ms** | ML predict_proba execution | `python scripts/verify_claims.py` |
+| **Holdout Test ROC-AUC** | **0.9330** | Evaluated on untouched holdout test set ($N=1,363$) | `python backend/test_defensible_pipeline.py` |
+| **Holdout Test PR-AUC** | **0.5834** | Precision-Recall AUC on 0.89% fraud prevalence | `python backend/test_defensible_pipeline.py` |
+| **Holdout Test F1** | **0.6000** | Balanced harmonic mean on holdout | `python backend/test_defensible_pipeline.py` |
+| **Holdout Precision** | **0.7500** | 6 True Positives, 2 False Positives | `python backend/test_defensible_pipeline.py` |
+| **Holdout Confusion Matrix** | `[[1349, 2], [6, 6]]` | 1,351 legitimate, 12 fraud holdout cases | `python backend/test_defensible_pipeline.py` |
+| **Data Leakage Check** | **PASSED** | Target `F3924` & `F3912` explicitly excluded | `python scripts/verify_claims.py` |
 
-> *Note on Perfect Test Metrics (ROC-AUC 1.0000): While real-world fraud models typically achieve 0.95–0.99 AUC, the 1.0000 test score on this dataset split was verified via strict train/test row isolation and complete exclusion of target leakage columns (`F3912` and `F3924`). High class separation on this feature subset allows HistGradientBoosting to achieve 1.00 AUC across test splits.*
+> **Scientific Transparency Note:** High-dimensional benchmark datasets with few fraud cases (81 instances) exhibit high geometric clustering in 3,900 dimensions. Rather than claiming unrealistic 100% production accuracy from a single dataset, FlashGuard Pro bounds the ML model output to 35% of the composite risk weight and combines it with 7 layers of real-time behavioral heuristics.
 
 ---
 
@@ -164,11 +166,14 @@ Integrates ML probability (0–85 pts) with 6 core rule categories:
 Project_FlashGuard/
 ├── backend/
 │   ├── main.py                   # FastAPI ASGI server (CORS, REST, WebSockets)
-│   ├── predict.py                # 11-Layer hybrid risk engine & decision fusion
-│   ├── ml_adapter.py             # FraudGuard ML wrapper & CustomPreprocessor
-│   ├── build_fraudguard_model.py # Model compilation & metadata builder
-│   ├── fraudguard_model.pkl      # Cryptographically frozen ML model bundle
+│   ├── predict.py                # 7-Layer hybrid risk engine & decision fusion
+│   ├── ml_adapter.py             # FraudGuard ML adapter & coverage attenuation
+│   ├── fraudguard_model.pkl      # Active production model bundle (v2 Hybrid)
 │   ├── model_metadata.json       # Provenance & benchmark metadata contract
+│   ├── MODEL_FREEZE.md           # Version registry & cryptographic manifest
+│   ├── models/                   # Frozen benchmark v1 and backup v2 bundles
+│   ├── test_defensible_pipeline.py # 13-scenario automated verification suite
+│   ├── final_verify.py           # 9-check system verification script
 │   └── database.py               # Persistent SQLite ledger store
 ├── fraudguard_flutter/           # Antivirus for Payments Mobile App
 │   ├── lib/
@@ -176,7 +181,7 @@ Project_FlashGuard/
 │   │   ├── theme/
 │   │   │   └── antivirus_theme.dart  # Warm beige palette & Mukta font styles
 │   │   ├── services/
-│   │   │   ├── api_service.dart      # REST API client & health checker
+│   │   │   ├── api_service.dart      # REST API client & local heuristic fallback
 │   │   │   ├── api_config.dart       # Loopback IP & host resolution
 │   │   │   └── localization_service.dart # English / Hindi translation manager
 │   │   ├── widgets/
@@ -196,6 +201,11 @@ Project_FlashGuard/
 ├── docs/
 │   ├── EVALUATION.md             # Hackathon evaluation & judging matrix
 │   └── PRD.md                    # Product requirements & problem specification
+├── FINAL_ML_STATUS.md            # Comprehensive ML architecture status report
+├── MODEL_GENERALIZATION_AUDIT.md # Forensic dataset audit & stress test report
+├── HACKATHON_ML_NOTES.md         # Judge presentation & pitch talking points
+├── CLAIMS_MATRIX.md              # Empirical claims veracity matrix
+├── PROJECT_HANDOFF.md            # Master project architecture & handoff report
 └── scripts/
     └── verify_claims.py          # 14-Claim automated verification test suite
 ```
@@ -210,41 +220,26 @@ cd backend
 pip install -r requirements.txt
 python main.py
 ```
-> Server runs on `http://127.0.0.1:8000` with active FraudGuard ML inference.
+> Server runs on `http://127.0.0.1:8000` with active FraudGuard v2 ML inference.
 
-### 2. Run Automated Verification Test Suite
+### 2. Run Automated Verification Test Suites
 ```bash
+# Verify all 14 empirical claims
 python scripts/verify_claims.py
+
+# Run comprehensive 13-test defensible pipeline suite
+python backend/test_defensible_pipeline.py
+
+# Run final 9-check verification
+python backend/final_verify.py
 ```
 
 ### 3. Run the Flutter Mobile App (Android Emulator)
-
-#### Terminal (Antigravity / PowerShell / Command Prompt)
 ```bash
-# 1. Navigate to the flutter project folder
 cd fraudguard_flutter
-
-# 2. Get packages / dependencies
 flutter pub get
-
-# 3. Check connected emulators and devices
-flutter devices
-
-# 4. Run the app on the running Android Emulator
 flutter run
-
-# (Or specify your emulator ID directly, e.g. emulator-5554)
-# flutter run -d emulator-5554
 ```
-
-> **Note on Emulator Network:** The Android Emulator communicates with the host FastAPI backend via `http://10.0.2.2:8000`, which is preconfigured in `lib/services/api_config.dart`. Ensure your backend is running before launching the app!
-
-#### Android Studio Workflow
-1. Open `fraudguard_flutter` in Android Studio.
-2. Launch your Android Virtual Device (AVD) from **Device Manager**.
-3. Select your emulator in the top device dropdown.
-4. Click the green **Run (▶)** button (or press `Shift + F10`).
-
 
 ---
 
