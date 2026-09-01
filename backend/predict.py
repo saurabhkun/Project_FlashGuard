@@ -1,3 +1,10 @@
+"""
+FraudGuard Pro Hybrid Risk Engine (v2)
+Combines calibrated Machine Learning fraud signals with multi-layer
+behavioral heuristics (amount deviation, velocity, impossible travel,
+recipient risk, account drain, device security, and temporal anomalies).
+"""
+
 import os
 import sys
 import math
@@ -12,45 +19,36 @@ from ml_adapter import FraudGuardAdapter
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(BASE_DIR, "fraudguard_model.pkl")
 
+# Initialize global adapter with fraudguard_v2 model bundle
 fraud_adapter = FraudGuardAdapter(MODEL_PATH)
 
-HIGH_RISK_COUNTRIES = ["Russia", "Nigeria", "North Korea", "Iran", "Syria", "Somalia", "Yemen", "High Risk Region"]
-user_transaction_history: Dict[str, List[dict]] = {}
+HIGH_RISK_COUNTRIES = ["Russia", "Nigeria", "North Korea", "Iran", "Syria", "Somalia", "Yemen", "High Risk Region", "Remote IP"]
 
-def calculate_distance(lat1, lon1, lat2, lon2):
+def calculate_distance(lat1, lon1, lat2, lon2) -> float:
+    """Calculates Haversine distance in kilometers between two GPS coordinates."""
     try:
         lat1, lon1, lat2, lon2 = map(math.radians, [float(lat1), float(lon1), float(lat2), float(lon2)])
         dlat = lat2 - lat1
         dlon = lon2 - lon1
-        a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
+        a = math.sin(dlat / 2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2)**2
         c = 2 * math.asin(math.sqrt(a))
-        r = 6371 # Radius of earth in km
-        return c * r
+        return c * 6371.0 # Earth radius in km
     except Exception:
         return 0.0
 
 def calculate_recipient_risk(name_dest: str) -> int:
+    """Calculates risk score component for flagged recipient identifiers."""
     if not name_dest:
         return 0
-    if name_dest.startswith("M999") or "SUSPICIOUS" in name_dest.upper() or "MULE" in name_dest.upper() or "UNKNOWN" in name_dest.upper():
+    name_upper = str(name_dest).upper()
+    if any(tag in name_upper for tag in ["M999", "SUSPICIOUS", "MULE", "FRAUD", "BLACKLIST"]):
         return 15
-    if name_dest.startswith("M"):
+    if name_upper.startswith("M"):
         return 5
     return 0
 
 def make_decision(data) -> Tuple[str, int]:
-    if isinstance(data, dict):
-        amount = float(data.get("amount", 0.0))
-        location_val = str(data.get("location", ""))
-        txn_type = str(data.get("type", ""))
-    else:
-        amount = float(getattr(data, "amount", 0.0))
-        location_val = str(getattr(data, "location", ""))
-        txn_type = str(getattr(data, "type", ""))
-
-    if amount > 500000 or location_val == "Remote IP":
-        return ("BLOCKED", 1)
-    
+    """Compatibility helper returning (status_string, code)."""
     risk_data = calculate_risk_score(data)
     if risk_data["decision"] == "BLOCK":
         return ("BLOCKED", 1)
@@ -58,133 +56,155 @@ def make_decision(data) -> Tuple[str, int]:
         return ("REVIEW", 0)
     return ("SUCCESS", 0)
 
+def calculate_risk_score(data, user_history: Optional[List[dict]] = None) -> dict:
+    """
+    Calculate fused risk score from 0-100 combining FraudGuard ML model with
+    7-layer deterministic behavioral heuristics.
 
-def calculate_risk_score(data, user_history: List[dict] = None) -> dict:
+    Decision Tiers:
+      0 - 40:  SAFE / ACCEPT
+      41 - 80: SUSPICIOUS / REVIEW
+      81 - 100: FRAUD / BLOCK
     """
-    Calculate risk score from 0-100 combining FraudGuard ML model with 11-layer hybrid heuristics.
-    SAFE (0-30): Auto Accept
-    SUSPICIOUS (31-70): Held for Review
-    FRAUD (71-100): Blocked
-    """
-    risk_score = 0
+    risk_score = 0.0
     reasons = []
     
-    current_hour = datetime.now().hour
     if user_history is None:
         user_history = []
     
     is_new_user = len(user_history) == 0
-    
+    current_hour = datetime.now().hour
+
+    # Extract payload fields safely
     if isinstance(data, dict):
         payload_dict = data
         amount = float(data.get("amount", 0.0))
         oldbalanceOrg = float(data.get("oldbalanceOrg", 0.0))
         newbalanceOrig = float(data.get("newbalanceOrig", 0.0))
         location = str(data.get("location", ""))
-        txn_type = str(data.get("type", ""))
+        txn_type = str(data.get("type", "PAYMENT"))
         nameDest = str(data.get("nameDest", ""))
         device_id = str(data.get("device_id", "Unknown"))
         gps_coordinates = str(data.get("gps_coordinates", "0.0, 0.0"))
-        is_fraud_label = data.get("is_fraud_label", data.get("F3924", data.get("is_fraud", 0)))
     else:
         payload_dict = data.dict() if hasattr(data, "dict") else data.__dict__
         amount = float(getattr(data, "amount", 0.0))
         oldbalanceOrg = float(getattr(data, "oldbalanceOrg", 0.0))
         newbalanceOrig = float(getattr(data, "newbalanceOrig", 0.0))
         location = str(getattr(data, "location", ""))
-        txn_type = str(getattr(data, "type", ""))
+        txn_type = str(getattr(data, "type", "PAYMENT"))
         nameDest = str(getattr(data, "nameDest", ""))
         device_id = str(getattr(data, "device_id", "Unknown"))
         gps_coordinates = str(getattr(data, "gps_coordinates", "0.0, 0.0"))
-        is_fraud_label = getattr(data, "is_fraud_label", getattr(data, "F3924", getattr(data, "is_fraud", 0)))
 
-    # 1. FRAUDGUARD ML MODEL COMPONENT (0-85 points)
-    ml_score = 0
+    # =========================================================================
+    # LAYER 1: MACHINE LEARNING RISK SIGNAL (0 - 35 points max)
+    # =========================================================================
+    ml_score = 0.0
     prob = 0.0
+    feature_coverage = 0.0
     try:
-        ml_result = fraud_adapter.predict_payload(payload_dict)
-        prob = ml_result.get("fraud_probability", 0.0)
-        
-        if is_fraud_label == 1:
-            prob = 0.999
-            ml_score = 85
-            reasons.append("Matched known fraud pattern in historical data")
-        elif prob >= 0.80:
-            ml_score = int(70 + (prob * 15))
-            reasons.append(f"FraudGuard AI model detected high fraud probability ({prob:.1%})")
-        elif prob >= 0.30:
-            ml_score = int(25 + (prob * 35))
-            reasons.append(f"FraudGuard AI model flagged elevated risk ({prob:.1%})")
-        else:
-            ml_score = int(prob * 20)
+        ml_res = fraud_adapter.predict_payload(payload_dict)
+        prob = ml_res.get("fraud_probability", 0.0)
+        ml_score = ml_res.get("ml_score", 0.0)
+        feature_coverage = ml_res.get("feature_coverage", 0.0)
+        if ml_res.get("reasons"):
+            reasons.extend(ml_res.get("reasons"))
     except Exception as e:
-        print(f"FraudGuard ML model evaluation error: {e}")
+        print(f"ML evaluation error in predict.py: {e}")
+        ml_score = 0.0
 
     risk_score += ml_score
 
-    # 2. AMOUNT DEVIATION COMPONENT (0-20 points)
-    amount_score = 0
+    # =========================================================================
+    # LAYER 2: AMOUNT DEVIATION COMPONENT (0 - 25 points max)
+    # =========================================================================
+    amount_score = 0.0
     amount_deviation = 0.0
     if user_history and len(user_history) > 0:
-        amounts = [tx.get("amount", 0) for tx in user_history if tx.get("amount")]
+        amounts = [float(tx.get("amount", 0)) for tx in user_history if tx.get("amount")]
         if amounts:
             avg_amount = sum(amounts) / len(amounts)
             max_amount = max(amounts)
+            amount_deviation = (amount - avg_amount) / max(avg_amount, 1.0)
             
-            if amount > avg_amount * 40:
-                amount_score = 20
-                reasons.append(f"Amount 40x above normal (Rs.{amount:.0f} vs avg Rs.{avg_amount:.0f})")
-            elif amount > avg_amount * 10:
-                amount_score = 15
-                reasons.append("Amount 10x above user typical transaction")
-            elif amount > max_amount * 2 and amount > 25000:
-                amount_score = 10
-                reasons.append("Highest transaction amount for this user")
-            
-            amount_deviation = (amount - avg_amount) / avg_amount if avg_amount > 0 else 0
+            if amount > avg_amount * 20 and amount >= 5000:
+                amount_score = 25.0
+                reasons.append(f"Amount 20x above user historical average (Rs.{amount:,.0f} vs avg Rs.{avg_amount:,.0f})")
+            elif amount > avg_amount * 10 and amount >= 5000:
+                amount_score = 20.0
+                reasons.append(f"Amount 10x above user historical average (Rs.{amount:,.0f} vs avg Rs.{avg_amount:,.0f})")
+            elif amount > avg_amount * 4 and amount >= 2500:
+                amount_score = 15.0
+                reasons.append(f"Amount 4x above user typical spending (Rs.{amount:,.0f} vs avg Rs.{avg_amount:,.0f})")
+            elif amount > max_amount * 2 and amount >= 5000:
+                amount_score = 10.0
+                reasons.append("Highest single transaction amount for this account profile")
     else:
+        # New or unprofiled account
         if amount >= 100000:
-            amount_score = 20
-            reasons.append("High amount (Rs.100,000+) for unverified transaction context")
+            amount_score = 25.0
+            reasons.append("Large unverified transfer (Rs.1,00,000+) on new account profile")
         elif amount >= 50000:
-            amount_score = 15
-            reasons.append("Substantial amount (Rs.50,000+) for unverified user context")
-        elif amount > 10000:
-            amount_score = 5
+            amount_score = 18.0
+            reasons.append("Substantial transfer (Rs.50,000+) requiring stepped verification")
+        elif amount >= 10000:
+            amount_score = 10.0
 
     risk_score += amount_score
 
-    # 3. VELOCITY & FREQUENCY COMPONENT (0-15 points)
-    velocity_score = 0
+    # =========================================================================
+    # LAYER 3: VELOCITY & TRANSACTION FREQUENCY (0 - 20 points max)
+    # =========================================================================
+    velocity_score = 0.0
     velocity_anomaly = False
-    recent_txns = len([tx for tx in user_history if (datetime.now() - (datetime.fromisoformat(tx["timestamp"]) if isinstance(tx.get("timestamp"), str) else datetime.now())).total_seconds() < 300]) if user_history else 0
-    
+    now = datetime.now()
+    recent_txns = 0
+    if user_history:
+        for tx in user_history:
+            ts_val = tx.get("timestamp")
+            if ts_val:
+                try:
+                    if isinstance(ts_val, str):
+                        clean_ts = ts_val.split(".")[0].replace("Z", "")
+                        dt = datetime.fromisoformat(clean_ts)
+                    elif isinstance(ts_val, datetime):
+                        dt = ts_val
+                    else:
+                        continue
+                    if (now - dt).total_seconds() < 300: # past 5 minutes
+                        recent_txns += 1
+                except Exception:
+                    pass
+
     if recent_txns >= 4:
-        velocity_score = 15
-        reasons.append("High velocity activity (4+ transactions in 5 minutes)")
+        velocity_score = 20.0
         velocity_anomaly = True
+        reasons.append("High velocity transaction burst (4+ transfers in 5 minutes)")
     elif recent_txns >= 2:
-        velocity_score = 8
-        reasons.append("Rapid consecutive transactions detected")
+        velocity_score = 15.0
         velocity_anomaly = True
+        reasons.append("Rapid consecutive transactions detected within 5 minutes")
 
     risk_score += velocity_score
 
-    # 4. LOCATION & TRAVEL SPEED COMPONENT (0-15 points)
-    location_score = 0
+    # =========================================================================
+    # LAYER 4: LOCATION & IMPOSSIBLE TRAVEL SPEED (0 - 20 points max)
+    # =========================================================================
+    location_score = 0.0
     if any(country.lower() in location.lower() for country in HIGH_RISK_COUNTRIES):
-        location_score += 15
-        reasons.append(f"Transaction from high-risk location: {location}")
+        location_score += 20.0
+        reasons.append(f"High-risk geographic origin: {location}")
     
     if user_history and len(user_history) > 0:
         last_tx = user_history[0]
-        last_location = last_tx.get("location", "")
-        if last_location and last_location != location and location_score == 0:
-            location_score += 5
-            reasons.append("Location mismatch from previous transaction")
+        last_location = str(last_tx.get("location", ""))
+        if last_location and last_location.lower() != location.lower() and location_score == 0:
+            location_score += 10.0
+            reasons.append(f"Location mismatch from previous session ({location} vs {last_location})")
             
         if gps_coordinates and gps_coordinates != "0.0, 0.0":
-            last_gps = last_tx.get("gps_coordinates", "0.0, 0.0")
+            last_gps = str(last_tx.get("gps_coordinates", "0.0, 0.0"))
             if last_gps and last_gps != "0.0, 0.0":
                 try:
                     lat1, lon1 = gps_coordinates.split(",")
@@ -196,91 +216,105 @@ def calculate_risk_score(data, user_history: List[dict] = None) -> dict:
                     if last_time_str:
                         clean_time = str(last_time_str).split(".")[0].replace("Z", "")
                         last_time = datetime.fromisoformat(clean_time)
-                        time_diff_hours = max((datetime.now() - last_time).total_seconds() / 3600, 0.01)
+                        time_diff_hours = max((now - last_time).total_seconds() / 3600.0, 0.01)
                     
                     if dist > 500 and time_diff_hours < 1.0:
-                        location_score += 15
-                        reasons.append(f"Impossible travel: >500km ({dist:.0f}km) in under 1 hour")
+                        location_score = max(location_score, 20.0)
+                        reasons.append(f"Impossible travel velocity: {dist:.0f}km in under {time_diff_hours:.1f}h")
                 except Exception as e:
                     print(f"Error calculating travel distance: {e}")
 
-    risk_score += min(location_score, 15)
+    risk_score += min(location_score, 20.0)
 
-    # 5. DEVICE & SECURITY ANOMALY COMPONENT (0-10 points)
-    device_score = 0
+    # =========================================================================
+    # LAYER 5: RECIPIENT RISK & ACCOUNT DRAINING (0 - 25 points max)
+    # =========================================================================
+    recipient_score = 0.0
+    rec_risk = calculate_recipient_risk(nameDest)
+    if rec_risk >= 15:
+        recipient_score += 20.0
+        reasons.append(f"High-risk flagged beneficiary entity ({nameDest})")
+    elif rec_risk > 0:
+        recipient_score += 8.0
+        reasons.append(f"Merchant/Beneficiary category risk factor ({nameDest})")
+
+    if oldbalanceOrg > 0 and amount > oldbalanceOrg * 0.75 and amount >= 5000:
+        recipient_score += 15.0
+        reasons.append(f"Severe balance depletion: transfer drains {(amount/oldbalanceOrg)*100:.0f}% of total balance")
+
+    risk_score += min(recipient_score, 25.0)
+
+    # =========================================================================
+    # LAYER 6: DEVICE SECURITY ANOMALY (0 - 15 points max)
+    # =========================================================================
+    device_score = 0.0
     if user_history and len(user_history) > 0:
         known_devices = set(tx.get("device_id") for tx in user_history if tx.get("device_id"))
         if device_id not in known_devices and device_id != "Unknown":
-            if amount > 10000:
-                device_score = 10
-                reasons.append(f"New unrecognized device ID ({device_id}) on high value transfer")
+            if amount >= 5000:
+                device_score = 15.0
+                reasons.append(f"Unrecognized device ({device_id}) executing substantial transfer")
             else:
-                device_score = 4
-    elif device_id.startswith("DEV_NEW") or device_id == "SUSPICIOUS_UNKNOWN_DEVICE":
-        if amount >= 50000:
-            device_score = 8
-            reasons.append("Unrecognized new device on large transaction")
+                device_score = 5.0
+    elif any(susp in device_id.upper() for susp in ["SUSPICIOUS", "DEV_NEW", "EMULATOR_UNKNOWN"]):
+        device_score = 12.0
+        reasons.append("Unverified or emulation device footprint detected")
 
     risk_score += device_score
 
-    # 6. RECIPIENT & CATEGORY RISK COMPONENT (0-15 points)
-    recipient_score = calculate_recipient_risk(nameDest)
-    if recipient_score > 0:
-        reasons.append(f"Flagged recipient metadata (Risk Factor: +{recipient_score})")
+    # =========================================================================
+    # LAYER 7: TIME ANOMALY (0 - 5 points max)
+    # =========================================================================
+    time_score = 0.0
+    if current_hour >= 2 and current_hour <= 5 and amount >= 10000:
+        time_score = 5.0
+        reasons.append(f"Off-peak transfer hour window ({current_hour:02d}:00)")
 
-    if oldbalanceOrg > 0 and amount > oldbalanceOrg * 0.75 and amount >= 25000:
-        recipient_score += 10
-        reasons.append("Draining over 75% of account balance")
+    risk_score += time_score
 
-    risk_score += min(recipient_score, 15)
+    # Multi-factor threat synergy: If 3 or more distinct major risk components are active
+    active_threat_layers = sum(1 for s in [amount_score >= 15, velocity_score >= 15, location_score >= 15, recipient_score >= 15, device_score >= 10] if s)
+    if active_threat_layers >= 3:
+        risk_score += 15.0
+        reasons.append(f"Multi-vector threat synergy ({active_threat_layers} high-severity anomaly vectors simultaneously active)")
 
-    # Cap risk score at 100
-    risk_score = min(max(risk_score, 0), 100)
+    # =========================================================================
+    # FUSED SCORE & DECISION THRESHOLDS
+    # =========================================================================
+    final_score = int(round(min(max(risk_score, 0.0), 100.0)))
     
-    # 7. HYBRID DECISION THRESHOLDS
-    if risk_score <= 30:
+    if final_score <= 40:
         level = "SAFE"
         decision = "ACCEPT"
-    elif risk_score <= 70:
+        if not reasons:
+            reasons.append("All risk parameters and behavioral metrics within normal range")
+    elif final_score <= 80:
         level = "SUSPICIOUS"
         decision = "REVIEW"
     else:
         level = "FRAUD"
         decision = "BLOCK"
-    
+
     transaction_id = f"TXN-{uuid.uuid4().hex[:8].upper()}"
-    
-    # DEBUG LOGGING
-    print("==================================================")
-    print(f"[DEBUG HYBRID ENGINE] FUSED RISK SCORE: {risk_score}/100 -> {level} ({decision})")
-    print(f"  * ML Prob Score: {ml_score}/85 (Prob: {prob:.6f})")
-    print(f"  * Amount Score: {amount_score}/20 | Velocity Score: {velocity_score}/15")
-    print(f"  * Location Score: {location_score}/15 | Device Score: {device_score}/10")
-    print(f"  * Recipient/Balance Score: {recipient_score}/15")
-    print("==================================================")
 
     return {
-        "risk_score": risk_score,
+        "risk_score": final_score,
         "level": level,
         "decision": decision,
-        "reasons": reasons if reasons else ["All parameters within normal range"],
+        "reasons": reasons,
         "transaction_id": transaction_id,
         "is_new_user": is_new_user,
-        "amount_deviation": amount_deviation if 'amount_deviation' in locals() else 0,
-        "velocity_anomaly": velocity_anomaly
+        "amount_deviation": round(amount_deviation, 2),
+        "velocity_anomaly": velocity_anomaly,
+        "ml_probability": round(prob, 4),
+        "feature_coverage": round(feature_coverage, 2),
+        "breakdown": {
+            "ml_score": round(ml_score, 1),
+            "amount_score": round(amount_score, 1),
+            "velocity_score": round(velocity_score, 1),
+            "location_score": round(min(location_score, 15.0), 1),
+            "recipient_score": round(min(recipient_score, 15.0), 1),
+            "device_score": round(device_score, 1),
+            "time_score": round(time_score, 1)
+        }
     }
-
-def store_transaction(user_id: str, transaction_data: dict):
-    if user_id not in user_transaction_history:
-        user_transaction_history[user_id] = []
-    user_transaction_history[user_id].append(transaction_data)
-    user_transaction_history[user_id] = user_transaction_history[user_id][-100:]
-
-def get_user_history(user_id: str) -> List[dict]:
-    return user_transaction_history.get(user_id, [])
-
-def get_all_transactions() -> List[dict]:
-    all_tx = []
-    for user_id, history in user_transaction_history.items():
-        all_tx.extend(history)
-    return sorted(all_tx, key=lambda x: x.get('timestamp', datetime.now()), reverse=True)

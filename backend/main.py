@@ -112,22 +112,12 @@ async def predict_route(data: TransactionRequest):
     history = get_history() or []
     user_history = [tx for tx in history if str(tx.get('nameOrig')) == str(data.nameOrig)]
     
-    # ML Logic
-    status_a, pred_a = make_decision(data)
+    # ML & Hybrid Risk Engine Logic
     behavior_label, behavior_score = predict_behavior(data, user_history)
     risk_result = calculate_risk_score(data, user_history)
     
     base_score = apply_feedback_learning(risk_result['risk_score'])
-    
-    # DATASET TRUTH OVERRIDE (For Streamer Demo if label is passed)
-    is_fraud_actual = getattr(data, 'is_fraud_label', 0)
-    
-    if is_fraud_actual == 1 and base_score < 80:
-        adjusted_score = 95
-        if "Matched known fraud pattern in historical data" not in risk_result['reasons']:
-            risk_result['reasons'].append("Matched known fraud pattern in historical data")
-    else:
-        adjusted_score = base_score
+    adjusted_score = min(max(base_score, 0), 100)
 
     # Final Decision Logic
     if adjusted_score <= 40:
@@ -205,11 +195,11 @@ async def health_check():
     return {
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
-        "model": "FraudGuard",
-        "model_version": getattr(fraud_adapter, "model_version", "fraudguard-dataset-v1"),
-        "model_type": getattr(fraud_adapter, "model_type", "HistGradientBoostingClassifier"),
+        "model": "FraudGuard Hybrid Risk Engine",
+        "model_version": getattr(fraud_adapter, "model_version", "fraudguard-v2-hybrid"),
+        "model_type": getattr(fraud_adapter, "model_type", "CalibratedRandomForestClassifier"),
         "model_loaded": getattr(fraud_adapter, "is_loaded", True),
-        "selected_features": 100,
+        "selected_features": len(getattr(fraud_adapter, "selected_features", [])),
         "dataset": "DataSet.csv",
         "legacy_model_disabled": True
     }

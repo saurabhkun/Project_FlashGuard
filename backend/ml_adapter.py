@@ -1,260 +1,161 @@
+"""
+FraudGuard ML Adapter (v2 Hybrid)
+Responsible for loading the trained ML risk model (fraudguard_v2)
+and generating bounded, coverage-aware machine-learned fraud signals.
+"""
+
 import os
 import sys
 import json
 import joblib
-import pandas as pd
 import numpy as np
-from typing import Dict, Any, List, Optional
-from datetime import datetime
+import pandas as pd
+from typing import Dict, Any, Optional, List
 
-from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.preprocessing import OrdinalEncoder
-from sklearn.impute import SimpleImputer
 
-class CustomPreprocessor(BaseEstimator, TransformerMixin):
-    def __init__(self, target_col="F3924", drop_missing_pct=95.0, drop_const_pct=99.9, leakage_cols=None):
-        self.target_col = target_col
-        self.drop_missing_pct = drop_missing_pct
-        self.drop_const_pct = drop_const_pct
-        self.leakage_cols = leakage_cols or ["F3912", "F3924"]
-        
-        self.columns_to_drop_ = []
-        self.categorical_cols_ = []
-        self.numeric_cols_ = []
-        self.cat_encoder_ = None
-        self.num_imputer_ = None
-        self.feature_names_out_ = []
-        
-    def fit(self, X, y=None):
-        X = X.copy()
-        drop_set = set()
-        for col in self.leakage_cols:
-            if col in X.columns:
-                drop_set.add(col)
-                
-        if self.target_col in X.columns:
-            drop_set.add(self.target_col)
-            
-        for col in X.columns:
-            if col not in drop_set:
-                if col.lower() in ["id", "index"] or X[col].dtype == "object":
-                    if X[col].nunique(dropna=True) > 1000:
-                        drop_set.add(col)
-                        
-        n_rows = len(X)
-        missing_series = (X.isna().sum() / n_rows) * 100
-        uniques = X.nunique(dropna=True)
-        
-        for col in X.columns:
-            if col not in drop_set:
-                if missing_series[col] >= self.drop_missing_pct:
-                    drop_set.add(col)
-                    continue
-                if uniques[col] <= 1:
-                    drop_set.add(col)
-                    continue
-
-        self.columns_to_drop_ = sorted(list(drop_set))
-        remaining_cols = [c for c in X.columns if c not in self.columns_to_drop_]
-        self.categorical_cols_ = [c for c in remaining_cols if X[c].dtype == "object" or not pd.api.types.is_numeric_dtype(X[c])]
-        self.numeric_cols_ = [c for c in remaining_cols if c not in self.categorical_cols_]
-        
-        if self.categorical_cols_:
-            cat_df = X[self.categorical_cols_].fillna("Missing").astype(str)
-            self.cat_encoder_ = OrdinalEncoder(handle_unknown="use_encoded_value", unknown_value=-1)
-            self.cat_encoder_.fit(cat_df)
-            
-        if self.numeric_cols_:
-            self.num_imputer_ = SimpleImputer(strategy="median")
-            self.num_imputer_.fit(X[self.numeric_cols_])
-            
-        self.feature_names_out_ = self.categorical_cols_ + self.numeric_cols_
-        return self
-
-    def transform(self, X):
-        X = X.copy()
-        cols_to_drop = [c for c in self.columns_to_drop_ if c in X.columns]
-        X_clean = X.drop(columns=cols_to_drop, errors="ignore")
-        
-        expected_cols = self.categorical_cols_ + self.numeric_cols_
-        X_clean = X_clean.reindex(columns=expected_cols)
-        
-        if self.categorical_cols_:
-            cat_data = X_clean[self.categorical_cols_].fillna("Missing").astype(str)
-            cat_trans = self.cat_encoder_.transform(cat_data)
-            cat_df = pd.DataFrame(cat_trans, columns=self.categorical_cols_, index=X.index)
-        else:
-            cat_df = pd.DataFrame(index=X.index)
-            
-        if self.numeric_cols_:
-            num_trans = self.num_imputer_.transform(X_clean[self.numeric_cols_])
-            num_df = pd.DataFrame(num_trans, columns=self.numeric_cols_, index=X.index)
-        else:
-            num_df = pd.DataFrame(index=X.index)
-            
-        return pd.concat([cat_df, num_df], axis=1)
-
-import types
-preprocessor_module = types.ModuleType("preprocessor")
-preprocessor_module.CustomPreprocessor = CustomPreprocessor
-sys.modules["preprocessor"] = preprocessor_module
-
-# Load medians from JSON
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MEDIANS_FILE = os.path.join(BASE_DIR, "baseline_medians.json")
-
-LEGIT_BASELINE_MEDIANS = {}
-FRAUD_BASELINE_MEDIANS = {}
-
-if os.path.exists(MEDIANS_FILE):
-    try:
-        with open(MEDIANS_FILE, "r", encoding="utf-8") as f_med:
-            med_data = json.load(f_med)
-            LEGIT_BASELINE_MEDIANS = med_data.get("legit_medians", {})
-            FRAUD_BASELINE_MEDIANS = med_data.get("fraud_medians", {})
-    except Exception as e:
-        print(f"Warning loading baseline medians: {e}")
-
-HIGH_RISK_LOCATIONS = ["russia", "nigeria", "north korea", "iran", "syria", "somalia", "yemen", "high risk"]
+DEFAULT_MODEL_PATH = os.path.join(BASE_DIR, "fraudguard_model.pkl")
 
 class FraudGuardAdapter:
+    """
+    Adapter for FraudGuard ML model.
+    Supports both full high-dimensional benchmark payloads and standard
+    mobile transaction payloads via feature coverage tracking and
+    smooth attenuation.
+    """
     def __init__(self, bundle_path: Optional[str] = None):
         self.model = None
-        self.preprocessor = None
-        self.selected_features = []
-        self.threshold = 0.5
-        self.target = "F3924"
-        self.model_version = "fraudguard-dataset-v1"
-        self.model_type = "HistGradientBoostingClassifier"
-        self.is_loaded = False
+        self.num_imputer = None
+        self.cat_encoder = None
+        self.selected_features: List[str] = []
+        self.feature_medians: Dict[str, float] = {}
+        self.threshold: float = 0.50
+        self.target: str = "F3924"
+        self.model_version: str = "fraudguard-v2-hybrid"
+        self.model_type: str = "CalibratedRandomForestClassifier"
+        self.is_loaded: bool = False
         
-        if bundle_path and os.path.exists(bundle_path):
-            self.load_bundle(bundle_path)
+        path_to_load = bundle_path or DEFAULT_MODEL_PATH
+        if path_to_load and os.path.exists(path_to_load):
+            self.load_bundle(path_to_load)
 
-    def load_bundle(self, bundle_path: str):
+    def load_bundle(self, bundle_path: str) -> bool:
         try:
             bundle = joblib.load(bundle_path)
             if isinstance(bundle, dict):
                 self.model = bundle.get("model")
-                self.preprocessor = bundle.get("preprocessor")
+                self.num_imputer = bundle.get("num_imputer")
+                self.cat_encoder = bundle.get("cat_encoder")
                 self.selected_features = bundle.get("selected_features", bundle.get("features", []))
-                self.threshold = float(bundle.get("threshold", 0.5))
+                self.feature_medians = bundle.get("feature_medians", {})
+                self.threshold = float(bundle.get("threshold", 0.50))
                 self.target = bundle.get("target", "F3924")
-                self.model_version = bundle.get("model_version", "fraudguard-dataset-v1")
-                self.model_type = bundle.get("model_type", "HistGradientBoostingClassifier")
+                self.model_version = bundle.get("model_version", "fraudguard-v2-hybrid")
+                self.model_type = bundle.get("model_type", type(self.model).__name__ if self.model else "Unknown")
             else:
                 self.model = bundle
+                self.model_type = type(bundle).__name__
             
-            self.is_loaded = (self.model is not None and self.preprocessor is not None)
+            self.is_loaded = (self.model is not None)
             return self.is_loaded
         except Exception as e:
             print(f"Error loading FraudGuard bundle ({bundle_path}): {e}")
             self.is_loaded = False
             return False
 
-    def build_feature_vector(self, data_dict: Dict[str, Any]) -> Dict[str, float]:
-        is_fraud_label = 0
-        if "is_fraud_label" in data_dict:
-            is_fraud_label = int(data_dict["is_fraud_label"])
-        elif "F3924" in data_dict:
-            is_fraud_label = int(data_dict["F3924"])
-        elif "is_fraud" in data_dict:
-            is_fraud_label = int(data_dict["is_fraud"])
-
-        if is_fraud_label == 1:
-            feature_vector = dict(FRAUD_BASELINE_MEDIANS)
-        else:
-            feature_vector = dict(LEGIT_BASELINE_MEDIANS)
-        
+    def build_feature_vector(self, data_dict: Dict[str, Any]) -> tuple[pd.DataFrame, float]:
+        """
+        Constructs the feature vector for model input and returns (DataFrame, coverage_ratio).
+        """
+        vector = {}
         explicit_count = 0
+
         for feat in self.selected_features:
-            if feat in data_dict and not pd.isna(data_dict[feat]):
+            if feat in data_dict and data_dict[feat] is not None and not pd.isna(data_dict[feat]):
                 try:
-                    feature_vector[feat] = float(data_dict[feat])
+                    vector[feat] = float(data_dict[feat])
                     explicit_count += 1
                 except (ValueError, TypeError):
-                    pass
+                    vector[feat] = self.feature_medians.get(feat, 0.0)
+            else:
+                vector[feat] = self.feature_medians.get(feat, 0.0)
 
-        if explicit_count >= 50 or is_fraud_label == 1:
-            return feature_vector
-
-        amount = float(data_dict.get("amount", 500.0))
-        txn_type = str(data_dict.get("type", "PAYMENT")).upper()
-        location = str(data_dict.get("location", "")).lower()
-        oldbalanceOrg = float(data_dict.get("oldbalanceOrg", 0.0))
-        
-        is_high_risk_location = any(loc in location for loc in HIGH_RISK_LOCATIONS)
-        is_account_drain = (oldbalanceOrg > 0 and amount > oldbalanceOrg * 0.9)
-        
-        amount_ratio = min(max(amount / 5000.0, 0.1), 50.0)
-        
-        if "F3813" in feature_vector and "F3813" not in data_dict:
-            feature_vector["F3813"] = LEGIT_BASELINE_MEDIANS.get("F3813", 450029.5) * min(amount_ratio, 5.0)
-        if "F949" in feature_vector and "F949" not in data_dict:
-            feature_vector["F949"] = LEGIT_BASELINE_MEDIANS.get("F949", 150000.0) * min(amount_ratio, 5.0)
-            
-        if amount >= 100000.0 or is_account_drain or is_high_risk_location:
-            for feat in ["F2230", "F162", "F1815", "F3811"]:
-                if feat in feature_vector and feat in FRAUD_BASELINE_MEDIANS:
-                    feature_vector[feat] = FRAUD_BASELINE_MEDIANS[feat]
-
-        return feature_vector
+        coverage = explicit_count / len(self.selected_features) if self.selected_features else 0.0
+        df_vector = pd.DataFrame([vector])[self.selected_features]
+        return df_vector, coverage
 
     def predict_payload(self, data_dict: Dict[str, Any]) -> Dict[str, Any]:
-        if not self.is_loaded:
+        """
+        Evaluates an incoming transaction payload.
+        Returns probability, bounded ML score contribution (0-35), coverage, and reasons.
+        """
+        if not self.is_loaded or not self.selected_features:
             return {
                 "fraud_probability": 0.0,
+                "ml_score": 0.0,
+                "feature_coverage": 0.0,
                 "is_fraud": False,
                 "risk_level": "LOW",
-                "reasons": ["FraudGuard ML model not loaded"],
+                "reasons": ["ML model not loaded - using deterministic rules"],
+                "model_version": self.model_version,
                 "selected_features_count": 0
             }
-            
-        feature_vector = self.build_feature_vector(data_dict)
-        X_pred = pd.DataFrame([feature_vector])[self.selected_features]
-        
-        if hasattr(self.model, "predict_proba"):
-            prob = float(self.model.predict_proba(X_pred)[0, 1])
-        elif hasattr(self.model, "decision_function"):
-            raw_score = float(self.model.decision_function(X_pred)[0])
-            prob = float(1.0 / (1.0 + np.exp(-raw_score)))
+
+        X_pred, coverage = self.build_feature_vector(data_dict)
+
+        # 1. Compute raw model prediction probability
+        try:
+            if hasattr(self.model, "predict_proba"):
+                raw_prob = float(self.model.predict_proba(X_pred)[0, 1])
+            elif hasattr(self.model, "decision_function"):
+                score = float(self.model.decision_function(X_pred)[0])
+                raw_prob = float(1.0 / (1.0 + np.exp(-score)))
+            else:
+                raw_prob = float(self.model.predict(X_pred)[0])
+        except Exception as e:
+            print(f"Prediction error in FraudGuardAdapter: {e}")
+            raw_prob = 0.0
+
+        # 2. Coverage-aware ML score calculation
+        # If payload has high benchmark coverage (>50%), trust the ML probability fully.
+        # If payload is standard mobile payload (coverage < 50%), calibrate the ML contribution
+        # smoothly without injecting artificial fraud medians.
+        if coverage >= 0.50:
+            effective_prob = raw_prob
+            # Full ML contribution: maps 0.0..1.0 to 0..35 risk points
+            ml_score = min(max(effective_prob * 35.0, 0.0), 35.0)
         else:
-            pred_val = int(self.model.predict(X_pred)[0])
-            prob = 1.0 if pred_val == 1 else 0.0
-            
-        is_fraud = bool(prob >= 0.80)
-        
-        if prob >= 0.80:
+            # Standard mobile transaction payload:
+            # Base ML signal on baseline medians is low/neutral (~0.05..0.15)
+            # Attenuate by coverage to prevent baseline bias
+            effective_prob = raw_prob * max(coverage, 0.1)
+            ml_score = min(max(effective_prob * 35.0, 0.0), 35.0)
+
+        # Determine ML risk tier
+        if effective_prob >= 0.70:
             risk_level = "HIGH"
-        elif prob >= 0.40:
+            is_fraud = True
+        elif effective_prob >= 0.35:
             risk_level = "MEDIUM"
+            is_fraud = False
         else:
             risk_level = "LOW"
-            
+            is_fraud = False
+
         reasons = []
-        if is_fraud:
-            reasons.append(f"FraudGuard AI model detected high fraud probability ({prob:.1%})")
-            
-        amount = data_dict.get("amount", "N/A")
-        txn_type = data_dict.get("type", "N/A")
-        loc = data_dict.get("location", "N/A")
-        missing_count = sum(1 for feat in self.selected_features if feat not in data_dict)
-        provided_count = len(self.selected_features) - missing_count
-        
-        print("==================================================")
-        print("[DEBUG ML_ADAPTER] INFERENCE EVALUATION")
-        print(f"  * Original Payload: Amount=Rs.{amount}, Type={txn_type}, Location={loc}")
-        print(f"  * Features Provided: {provided_count}/100 | Imputed Baselines: {missing_count}/100")
-        print(f"  * Transformed Shape: {X_pred.shape}")
-        print(f"  * FraudGuard ML Probability: {prob:.6f} ({prob:.2%})")
-        print(f"  * ML Risk Level: {risk_level}")
-        print("==================================================")
+        if effective_prob >= 0.70:
+            reasons.append(f"Machine learning model flagged high statistical anomaly ({effective_prob:.1%})")
+        elif effective_prob >= 0.40:
+            reasons.append(f"Machine learning model indicated elevated anomaly pattern ({effective_prob:.1%})")
 
         return {
-            "fraud_probability": prob,
+            "fraud_probability": round(effective_prob, 4),
+            "raw_probability": round(raw_prob, 4),
+            "ml_score": round(ml_score, 1),
+            "feature_coverage": round(coverage, 2),
             "is_fraud": is_fraud,
             "risk_level": risk_level,
             "reasons": reasons,
-            "selected_features_count": len(self.selected_features),
-            "feature_vector_sample": {k: round(feature_vector[k], 2) for k in list(feature_vector.keys())[:5]}
+            "model_version": self.model_version,
+            "selected_features_count": len(self.selected_features)
         }
